@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Data and generated artifacts
+data/raw/
+data/processed/
+data/labels/
+checkpoints/
+runs/
+outputs/
+
+# Model files
+*.pt
+*.pth
+*.onnx
+*.ckpt
+
+# Local/system files
+.DS_Store
+*.log
+
+# Poster build outputs
+poster/*.aux
+poster/*.log
+poster/*.nav
+poster/*.out
+poster/*.snm
+poster/*.toc
+poster/*.pdf
