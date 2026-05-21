@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chess Evaluation Network Compression — Research Poster</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #181b24;
+    --surface-alt: #1e2230;
+    --border: #2a2f3e;
+    --accent: #7eb8f7;
+    --accent-dim: #3d6a9e;
+    --accent-glow: rgba(126, 184, 247, 0.08);
+    --green: #6fcf97;
+    --amber: #f2c94c;
+    --coral: #eb5757;
+    --text: #e4e7ee;
+    --text-secondary: #9ca3b4;
+    --text-dim: #636b80;
+    --serif: 'Source Serif 4', Georgia, serif;
+    --sans: 'DM Sans', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .poster {
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 40px 32px 60px;
+  }
+
+  /* ───── HEADER ───── */
+  .header {
+    text-align: center;
+    padding: 48px 40px 44px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: linear-gradient(168deg, var(--surface) 0%, var(--bg) 100%);
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 28px;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    top: -120px; left: 50%; transform: translateX(-50%);
+    width: 600px; height: 260px;
+    background: radial-gradient(ellipse, rgba(126,184,247,0.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .header-tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid var(--accent-dim);
+    padding: 5px 16px;
+    border-radius: 20px;
+    margin-bottom: 22px;
+    background: var(--accent-glow);
+  }
+  .header h1 {
+    font-family: var(--serif);
+    font-size: 2.6rem;
+    font-weight: 700;
+    line-height: 1.22;
+    color: #fff;
+    max-width: 900px;
+    margin: 0 auto 14px;
+  }
+  .header h1 span { color: var(--accent); }
+  .header .subtitle {
+    font-size: 1.05rem;
+    color: var(--text-secondary);
+    max-width: 720px;
+    margin: 0 auto 20px;
+    line-height: 1.55;
+  }
+  .authors {
+    font-size: 0.88rem;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    letter-spacing: 0.3px;
+  }
+
+  /* ───── GRID ───── */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1.15fr 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 960px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+
+  /* ───── CARD ───── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 30px 28px 28px;
+    position: relative;
+  }
+  .card--tall { grid-row: span 2; }
+  .card-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-label .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .card h2 {
+    font-family: var(--serif);
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 14px;
+  }
+  .card p, .card li {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.65;
+  }
+  .card p + p { margin-top: 10px; }
+  .card ul {
+    list-style: none;
+    padding: 0;
+  }
+  .card ul li {
+    padding: 6px 0 6px 18px;
+    position: relative;
+  }
+  .card ul li::before {
+    content: '›';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 1.1rem;
+    line-height: 1.55;
+  }
+
+  /* ───── PIPELINE DIAGRAM ───── */
+  .pipeline {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 18px 0 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .pipe-node {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    text-align: center;
+    min-width: 105px;
+    flex-shrink: 0;
+  }
+  .pipe-node .pipe-icon { font-size: 1.3rem; margin-bottom: 4px; }
+  .pipe-node .pipe-title {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.2px;
+  }
+  .pipe-node .pipe-sub {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .pipe-arrow {
+    font-size: 1rem;
+    color: var(--accent-dim);
+    padding: 0 4px;
+    flex-shrink: 0;
+  }
+
+  /* ───── ARCHITECTURE TABLE ───── */
+  .arch-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0 6px;
+    font-size: 0.82rem;
+  }
+  .arch-table th {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .arch-table td {
+    padding: 9px 10px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid rgba(42,47,62,0.5);
+  }
+  .arch-table tr:last-child td { border-bottom: none; }
+  .arch-table .highlight { color: var(--accent); font-weight: 600; }
+  .arch-table .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    background: var(--accent-glow);
+    border: 1px solid var(--accent-dim);
+    color: var(--accent);
+    padding: 2px 8px;
+    border-radius: 6px;
+  }
+
+  /* ───── PLACEHOLDER ───── */
+  .placeholder {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 36px 20px;
+    text-align: center;
+    margin: 16px 0 8px;
+    background: rgba(126,184,247,0.02);
+  }
+  .placeholder .ph-icon {
+    font-size: 2rem;
+    margin-bottom: 8px;
+    opacity: 0.5;
+  }
+  .placeholder .ph-label {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+  }
+
+  .placeholder-sm {
+    padding: 26px 16px;
+    margin: 12px 0 6px;
+  }
+
+  /* ───── METRIC CHIPS ───── */
+  .metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 14px 0 8px;
+  }
+  .metric {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+  }
+  .metric .metric-val {
+    font-family: var(--mono);
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .metric .metric-label {
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    margin-top: 3px;
+    letter-spacing: 0.3px;
+  }
+
+  /* ───── LOSS EQ ───── */
+  .equation {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin: 14px 0 10px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    color: var(--text);
+    line-height: 1.7;
+    overflow-x: auto;
+  }
+  .eq-note {
+    font-family: var(--sans);
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    margin-top: 6px;
+    text-align: center;
+  }
+
+  /* ───── RELATED WORKS ───── */
+  .ref-item {
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(42,47,62,0.5);
+  }
+  .ref-item:last-child { border-bottom: none; }
+  .ref-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .ref-body {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    line-height: 1.55;
+  }
+
+  /* ───── FOOTER ───── */
+  .footer {
+    margin-top: 28px;
+    text-align: center;
+    padding: 22px;
+    border-top: 1px solid var(--border);
+    font-size: 0.78rem;
+    color: var(--text-dim);
+  }
+
+  /* ───── SPECIAL HIGHLIGHTS ───── */
+  .hl-green { color: var(--green); }
+  .hl-amber { color: var(--amber); }
+  .hl-coral { color: var(--coral); }
+
+  .tech-stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0 6px;
+  }
+  .tech-chip {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    padding: 4px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface-alt);
+    color: var(--text-secondary);
+  }
+
+  /* ───── MATH EQUATION ───── */
+  .math-block {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 22px 24px;
+    margin: 14px 0 10px;
+    text-align: center;
+    overflow-x: auto;
+  }
+  .math-eq {
+    font-family: 'Source Serif 4', 'Times New Roman', serif;
+    font-size: 1.15rem;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 5px;
+    line-height: 1;
+  }
+  .math-eq .m-sym {
+    font-style: italic;
+    color: var(--accent);
+  }
+  .math-eq .m-op {
+    font-style: normal;
+    color: var(--text-secondary);
+    padding: 0 2px;
+  }
+  .math-eq .m-fn {
+    font-style: normal;
+    font-variant: normal;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.3px;
+  }
+  .math-eq .m-paren {
+    font-style: normal;
+    color: var(--text-dim);
+    font-size: 1.3rem;
+    line-height: 1;
+  }
+  .math-eq .m-big-paren {
+    font-style: normal;
+    color: var(--text-dim);
+    font-size: 1.8rem;
+    line-height: 0.8;
+    vertical-align: middle;
+  }
+  .math-eq sub {
+    font-size: 0.7em;
+    color: var(--text-secondary);
+    font-style: normal;
+    vertical-align: -0.15em;
+  }
+  .math-frac {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    vertical-align: middle;
+    margin: 0 2px;
+  }
+  .math-frac .frac-num {
+    border-bottom: 1px solid var(--text-dim);
+    padding: 0 4px 3px;
+    font-style: italic;
+    color: var(--accent);
+    font-size: 0.9rem;
+  }
+  .math-frac .frac-den {
+    padding: 3px 4px 0;
+    font-style: italic;
+    color: var(--accent);
+    font-size: 0.9rem;
+  }
+  .math-underbrace {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 4px;
+  }
+  .math-underbrace .ub-content {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .math-underbrace .ub-brace {
+    font-size: 1.6rem;
+    color: var(--text-dim);
+    line-height: 0.5;
+    margin-top: -2px;
+  }
+  .math-underbrace .ub-label {
+    font-size: 0.6rem;
+    font-family: var(--mono);
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+</style>
+</head>
+<body>
+<div class="poster">
+
+  <!-- ═══════════ HEADER ═══════════ -->
+  <div class="header">
+    <div class="header-tag">Mid-Point Milestone · Draft Poster</div>
+    <h1>Compressing Chess Evaluation Networks for <span>Edge-Device Inference</span></h1>
+    <p class="subtitle">
+      We compare four compression strategies — <strong>knowledge distillation</strong>, <strong>architecture reduction</strong>, <strong>weight pruning</strong>, and <strong>post-training quantization</strong> — to evaluate how each affects the accuracy–efficiency tradeoff for chess evaluation networks under edge-device compute constraints.
+    </p>
+    <div class="authors">University of Washington · CSE · Spring 2026</div>
+  </div>
+
+  <!-- ═══════════ MAIN GRID ═══════════ -->
+  <div class="grid">
+
+    <!-- ── COL 1 ── -->
+
+    <!-- MOTIVATION -->
+    <div class="card">
+      <div class="card-label"><span class="dot"></span> Motivation</div>
+      <h2>Why Compress?</h2>
+      <p>
+        Modern chess engines such as Leela Chess Zero (Lc0) rely on deep residual neural networks that demand significant compute and memory — competition-grade networks range from 160 to 330 MB and require 2–4 GB of GPU RAM for real-time evaluation. This makes them impractical for edge devices like smartphones and single-board computers with limited RAM.
+      </p>
+      <p>
+        We investigate which compression strategies yield the best tradeoff between evaluation accuracy and inference cost. Specifically, we compare four techniques — knowledge distillation, smaller architecture design, structured weight pruning, and post-training quantization — and whether they can be composed to let small models retain the performance of their larger counterparts.
+      </p>
+
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-val">160–330 MB</div>
+          <div class="metric-label">Lc0 competition nets</div>
+        </div>
+        <div class="metric">
+          <div class="metric-val">&lt;10 MB</div>
+          <div class="metric-label">Our target model</div>
+        </div>
+        <div class="metric">
+          <div class="metric-val">2–4 GB</div>
+          <div class="metric-label">Lc0 GPU RAM</div>
+        </div>
+        <div class="metric">
+          <div class="metric-val">≤512 MB</div>
+          <div class="metric-label">Edge RAM budget</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DATA & PREPROCESSING -->
+    <div class="card">
+      <div class="card-label"><span class="dot"></span> Data</div>
+      <h2>Datasets &amp; Preprocessing</h2>
+      <p>
+        Positions are sampled from two large, open sources and labeled with evaluations from Stockfish (state-of-the-art conventional engine) as objective ground-truth targets.
+      </p>
+      <ul>
+        <li><strong>Lichess Open Database</strong> — millions of game positions from real human play across all Elo ranges</li>
+        <li><strong>Lumbra's Gigabase</strong> — high-quality curated OTB game database with broad coverage of openings, middlegames, and endgames</li>
+      </ul>
+      <p style="margin-top:12px;">
+        Each position is encoded as a multi-channel tensor representation of the 8×8 board (piece type, color, castling rights, en passant). Stockfish depth-20 evaluations provide centipawn labels; Lc0 Teacher logits provide soft targets for distillation.
+      </p>
+
+      <div class="tech-stack">
+        <span class="tech-chip">python-chess</span>
+        <span class="tech-chip">Stockfish 17</span>
+        <span class="tech-chip">Lc0 v0.31</span>
+        <span class="tech-chip">PyTorch</span>
+        <span class="tech-chip">NumPy</span>
+      </div>
+    </div>
+
+    <!-- ── COL 2 (center, tall) ── -->
+
+    <!-- METHODOLOGY -->
+    <div class="card card--tall">
+      <div class="card-label"><span class="dot"></span> Methodology</div>
+      <h2>Compression Strategies</h2>
+      <p>
+        We systematically compare four well-defined compression techniques applied to a Leela Chess Zero (Lc0) baseline. Each strategy targets a different axis of cost reduction, and we evaluate them both independently and in combination.
+      </p>
+
+      <!-- Four Strategies Table -->
+      <table class="arch-table" style="margin:14px 0 18px;">
+        <thead>
+          <tr><th>Strategy</th><th>Technique</th><th>Cost Axis</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="highlight">S1 · Distillation</td>
+            <td>Train Student CNN on Lc0 soft logits + Stockfish hard labels</td>
+            <td>Params, FLOPs</td>
+          </tr>
+          <tr>
+            <td class="highlight">S2 · Smaller Arch</td>
+            <td>Reduce width (F) &amp; depth (N) of DW-Sep Conv backbone</td>
+            <td>Params, FLOPs</td>
+          </tr>
+          <tr>
+            <td class="highlight">S3 · Pruning</td>
+            <td>Structured filter pruning (L1-norm) at 30%/50%/70% sparsity</td>
+            <td>FLOPs, latency</td>
+          </tr>
+          <tr>
+            <td class="highlight">S4 · Quantization</td>
+            <td>Post-training FP32 → INT8 via PyTorch quantization API</td>
+            <td>Memory, latency</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        Key comparison: each strategy is benchmarked in isolation, and the best-performing combinations (e.g., S1+S2+S4: distilled small model + INT8) are tested to identify compounding benefits on the Pareto frontier.
+      </p>
+
+      <!-- Pipeline Diagram -->
+      <div class="pipeline">
+        <div class="pipe-node">
+          <div class="pipe-icon">♟</div>
+          <div class="pipe-title">Positions</div>
+          <div class="pipe-sub">Lichess + Lumbra</div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-node">
+          <div class="pipe-icon">🔬</div>
+          <div class="pipe-title">Stockfish</div>
+          <div class="pipe-sub">Hard labels</div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-node" style="border-color:var(--accent-dim);">
+          <div class="pipe-icon">🧠</div>
+          <div class="pipe-title">Lc0 Teacher</div>
+          <div class="pipe-sub">Soft logits</div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-node" style="border-color:var(--green); background:rgba(111,207,151,0.06);">
+          <div class="pipe-icon">⚡</div>
+          <div class="pipe-title">S1–S4</div>
+          <div class="pipe-sub">Compress → Eval</div>
+        </div>
+      </div>
+
+      <!-- Architecture Table -->
+      <h2 style="margin-top:22px; font-size:1.1rem;">Student Architecture</h2>
+      <p>
+        The Student replaces standard convolutions with depthwise separable convolutions to drastically reduce FLOPs while preserving representational capacity.
+      </p>
+      <table class="arch-table">
+        <thead>
+          <tr><th>Layer</th><th>Type</th><th>Output</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Input</td>
+            <td>Board tensor</td>
+            <td class="highlight">C × 8 × 8</td>
+          </tr>
+          <tr>
+            <td>Conv Block ×N</td>
+            <td><span class="tag">DW-Sep Conv</span></td>
+            <td>F × 8 × 8</td>
+          </tr>
+          <tr>
+            <td>SE Squeeze-Excite</td>
+            <td>Channel attention</td>
+            <td>F × 8 × 8</td>
+          </tr>
+          <tr>
+            <td>Policy Head</td>
+            <td>1×1 Conv + FC</td>
+            <td>Move logits</td>
+          </tr>
+          <tr>
+            <td>Value Head</td>
+            <td>1×1 Conv + FC</td>
+            <td class="highlight">Scalar eval</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Loss Function -->
+      <h2 style="margin-top:22px; font-size:1.1rem;">Combined Distillation Loss</h2>
+      <div class="math-block">
+        <div class="math-eq">
+          <span class="m-sym">ℒ</span>
+          <span class="m-op">=</span>
+          <span class="m-sym">α</span>
+          <span class="m-op">·</span>
+          <span class="m-fn">MSE</span><span class="m-paren">(</span><span class="m-sym">ŷ</span><span class="m-op">,</span>&nbsp;<span class="m-sym">y</span><sub>SF</sub><span class="m-paren">)</span>
+          <span class="m-op">+</span>
+          <span class="m-paren">(</span><span style="color:var(--text);">1</span><span class="m-op">−</span><span class="m-sym">α</span><span class="m-paren">)</span>
+          <span class="m-op">·</span>
+          <span class="m-fn">KL</span><span class="m-big-paren">(</span>
+          <span class="m-sym">σ</span><span class="m-paren">(</span>
+          <span class="math-frac"><span class="frac-num">z<sub>T</sub></span><span class="frac-den">τ</span></span>
+          <span class="m-paren">)</span>
+          <span class="m-op" style="font-size:1.2rem;">‖</span>
+          <span class="m-sym">σ</span><span class="m-paren">(</span>
+          <span class="math-frac"><span class="frac-num">z<sub>S</sub></span><span class="frac-den">τ</span></span>
+          <span class="m-paren">)</span>
+          <span class="m-big-paren">)</span>
+        </div>
+      </div>
+      <p class="eq-note">
+        <span class="m-sym" style="font-family:var(--serif);font-style:italic;color:var(--accent);font-size:0.85rem;">α</span> balances hard-target (Stockfish) loss with soft-target (Teacher KL divergence). <span class="m-sym" style="font-family:var(--serif);font-style:italic;color:var(--accent);font-size:0.85rem;">τ</span> is distillation temperature.
+      </p>
+
+      <h2 style="margin-top:22px; font-size:1.1rem;">Planned Experiments</h2>
+      <ul>
+        <li><strong>S1 — Distillation ablation</strong> — compare hard-only (Stockfish MSE), soft-only (Lc0 KL), and combined loss to isolate distillation benefit</li>
+        <li><strong>S2 — Architecture sweep</strong> — vary width F ∈ {32, 64, 128} and depth N ∈ {3, 6, 10, 15} to map capacity vs. cost</li>
+        <li><strong>S3 — Pruning sweep</strong> — apply L1-norm structured filter pruning at 30%, 50%, and 70% sparsity with fine-tuning</li>
+        <li><strong>S4 — Quantization</strong> — apply post-training FP32 → INT8 quantization and measure latency speedup vs. accuracy drop</li>
+        <li><strong>Composition</strong> — combine best S1+S2+S3+S4 configurations and plot all variants on a unified Pareto frontier (MSE vs. latency, MSE vs. params)</li>
+      </ul>
+    </div>
+
+    <!-- ── COL 3 ── -->
+
+    <!-- EXPECTED RESULTS -->
+    <div class="card">
+      <div class="card-label"><span class="dot"></span> Expected Results</div>
+      <h2>Planned Visualizations</h2>
+
+      <div class="placeholder">
+        <div class="ph-icon">📊</div>
+        <div class="ph-label">[ Pareto Frontier: MSE vs. Latency — All Strategies (S1–S4) &amp; Compositions ]</div>
+      </div>
+      <p style="margin-top:8px;">
+        Every model variant (distilled, reduced-arch, pruned, quantized, and composed combinations) plotted by evaluation error against wall-clock inference time on an ARM edge device. The Pareto-optimal curve identifies which strategies dominate.
+      </p>
+
+      <div class="placeholder placeholder-sm">
+        <div class="ph-icon">📈</div>
+        <div class="ph-label">[ S2 Architecture Sweep — Accuracy vs. Params (Width × Depth) ]</div>
+      </div>
+
+      <div class="placeholder placeholder-sm">
+        <div class="ph-icon">🔥</div>
+        <div class="ph-label">[ S1 Distillation Ablation — Hard vs. Soft vs. Combined Loss ]</div>
+      </div>
+
+      <div class="placeholder placeholder-sm">
+        <div class="ph-icon">✂️</div>
+        <div class="ph-label">[ S3 Pruning — Accuracy vs. Sparsity (30% / 50% / 70%) ]</div>
+      </div>
+
+      <div class="placeholder placeholder-sm">
+        <div class="ph-icon">⏱</div>
+        <div class="ph-label">[ S4 INT8 Quantization — Accuracy Drop vs. Speedup ]</div>
+      </div>
+    </div>
+
+    <!-- RELATED WORKS -->
+    <div class="card">
+      <div class="card-label"><span class="dot"></span> Related Works</div>
+      <h2>Key Prior Work</h2>
+
+      <div class="ref-item">
+        <div class="ref-title">1. Hinton et al., "Distilling the Knowledge in a Neural Network" (2015)</div>
+        <div class="ref-body">
+          Introduced knowledge distillation, training a small student network to mimic a large teacher's softened output distribution. This foundational technique underpins our S1 distillation strategy — we adopt the temperature-scaled KL divergence loss directly from this work.
+        </div>
+      </div>
+
+      <div class="ref-item">
+        <div class="ref-title">2. Howard et al., "MobileNets: Efficient CNNs for Mobile Vision" (2017)</div>
+        <div class="ref-body">
+          Proposed depthwise separable convolutions to dramatically reduce computation and model size for mobile deployment. Our S2 Student architecture directly adapts this factorization to the chess board tensor, replacing standard convolutions to achieve edge-viable FLOPs.
+        </div>
+      </div>
+
+      <div class="ref-item">
+        <div class="ref-title">3. Li et al., "Pruning Filters for Efficient ConvNets" (ICLR 2017)</div>
+        <div class="ref-body">
+          Demonstrated that ranking convolutional filters by L1-norm and removing the least important ones yields compact models with minimal accuracy loss after fine-tuning. We apply this structured pruning approach as our S3 strategy, sweeping sparsity levels to map the pruning–accuracy tradeoff.
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /grid -->
+
+  <!-- ═══════════ FOOTER ═══════════ -->
+  <div class="footer">
+    University of Washington · Computer Science & Engineering · Spring 2026
+  </div>
+
+</div><!-- /poster -->
+</body>
+</html>
