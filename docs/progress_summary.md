@@ -1,7 +1,5 @@
 # Progress Summary
 
-Draft pending.
+Our project investigates how much Stockfish-like chess evaluation behavior can be preserved by compact neural student models designed for low-memory inference. We implemented a local teacher-student pipeline that samples games from the Lichess open database, converts PGN games into FEN board positions, and labels each position using a local Stockfish UCI engine. Each board is encoded as an 18-channel 8x8 tensor containing piece planes plus state information such as side to move, castling rights, and en passant availability. The student model uses a small convolutional backbone with two heads: a policy head that predicts Stockfish-preferred moves and a value head that predicts Stockfish evaluation.
 
-Target length: 150-250 words.
-
-This section should explain the model architecture, dataset and preprocessing, planned experiments, expected outputs, and analysis approach.
+For the midpoint implementation, we trained small CNN and depthwise separable CNN variants using Stockfish MultiPV labels, where the top candidate moves are converted into soft policy targets and centipawn scores are converted into bounded value targets. Our first smoke test extracted 1,399 positions, labeled 998 with Stockfish at depth 6 and MultiPV 5, and trained four model variants. The final experiments will scale the number of positions, increase Stockfish depth, train for more epochs, and compare architectures by Top-1/Top-3 move agreement, value RMSE, value correlation, parameter count, model size, and CPU latency. We will interpret results using Pareto frontier plots to identify models with the best accuracy-efficiency tradeoff.

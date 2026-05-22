@@ -1,9 +1,7 @@
 # Related Work
 
-Draft pending.
+Silver et al.'s AlphaZero demonstrated that deep neural networks can guide chess play by combining policy/value prediction with search, replacing hand-crafted evaluation features with learned board representations. Our project is related because we also use a policy/value neural architecture for chess positions, but we focus on compressing a small student model rather than training a world-class engine through self-play.
 
-Planned works to cover:
+Stockfish is a leading open-source UCI chess engine that combines highly optimized alpha-beta search with a strong NNUE-style evaluation function. It serves as our teacher because it can be run locally to generate reproducible best-move and centipawn labels for large numbers of FEN positions. Our work does not try to replace Stockfish search directly; instead, it studies how well a lightweight neural model can approximate Stockfish's analysis outputs.
 
-- AlphaZero.
-- Leela Chess Zero.
-- Knowledge distillation and efficient CNN architectures such as MobileNet.
+Hinton et al.'s knowledge distillation work introduced the idea of training a smaller student model to imitate a stronger teacher's softened output distribution. This is central to our method: Stockfish MultiPV scores are converted into soft move targets so that the student learns not only the best move, but also which alternative moves remain reasonable. MobileNet-style depthwise separable convolutions also inform our architecture comparison because they reduce parameters and computation, making them suitable for edge-device chess evaluation.

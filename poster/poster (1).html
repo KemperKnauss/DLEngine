@@ -470,7 +470,7 @@
     <div class="header-tag">Mid-Point Milestone · Draft Poster</div>
     <h1>Compressing Chess Evaluation Networks for <span>Edge-Device Inference</span></h1>
     <p class="subtitle">
-      We compare four compression strategies — <strong>knowledge distillation</strong>, <strong>architecture reduction</strong>, <strong>weight pruning</strong>, and <strong>post-training quantization</strong> — to evaluate how each affects the accuracy–efficiency tradeoff for chess evaluation networks under edge-device compute constraints.
+      We train compact neural student models to imitate local Stockfish analysis, then compare how architecture size and depthwise separable convolutions affect the accuracy-efficiency tradeoff for low-memory chess evaluation.
     </p>
     <div class="authors">University of Washington · CSE · Spring 2026</div>
   </div>
@@ -485,28 +485,28 @@
       <div class="card-label"><span class="dot"></span> Motivation</div>
       <h2>Why Compress?</h2>
       <p>
-        Modern chess engines such as Leela Chess Zero (Lc0) rely on deep residual neural networks that demand significant compute and memory — competition-grade networks range from 160 to 330 MB and require 2–4 GB of GPU RAM for real-time evaluation. This makes them impractical for edge devices like smartphones and single-board computers with limited RAM.
+        Strong chess analysis usually depends on expensive search and/or large learned evaluators. Stockfish can produce excellent move choices and centipawn evaluations, but running teacher-quality analysis for every position is too costly for lightweight or edge-device settings.
       </p>
       <p>
-        We investigate which compression strategies yield the best tradeoff between evaluation accuracy and inference cost. Specifically, we compare four techniques — knowledge distillation, smaller architecture design, structured weight pruning, and post-training quantization — and whether they can be composed to let small models retain the performance of their larger counterparts.
+        We investigate whether small neural students can preserve useful Stockfish-like behavior while reducing inference cost. The central question is which compact architecture gives the best tradeoff between imitation accuracy, parameter count, memory footprint, and CPU latency.
       </p>
 
       <div class="metrics">
         <div class="metric">
-          <div class="metric-val">160–330 MB</div>
-          <div class="metric-label">Lc0 competition nets</div>
+          <div class="metric-val">998</div>
+          <div class="metric-label">midpoint labels</div>
         </div>
         <div class="metric">
-          <div class="metric-val">&lt;10 MB</div>
-          <div class="metric-label">Our target model</div>
+          <div class="metric-val">&lt;1 MB</div>
+          <div class="metric-label">first checkpoints</div>
         </div>
         <div class="metric">
-          <div class="metric-val">2–4 GB</div>
-          <div class="metric-label">Lc0 GPU RAM</div>
+          <div class="metric-val">0.28 ms</div>
+          <div class="metric-label">fastest CPU pass</div>
         </div>
         <div class="metric">
-          <div class="metric-val">≤512 MB</div>
-          <div class="metric-label">Edge RAM budget</div>
+          <div class="metric-val">0.70</div>
+          <div class="metric-label">best value corr.</div>
         </div>
       </div>
     </div>
@@ -516,22 +516,22 @@
       <div class="card-label"><span class="dot"></span> Data</div>
       <h2>Datasets &amp; Preprocessing</h2>
       <p>
-        Positions are sampled from two large, open sources and labeled with evaluations from Stockfish (state-of-the-art conventional engine) as objective ground-truth targets.
+        Positions are sampled from the Lichess open database and labeled with a local Stockfish executable. The midpoint run uses a small subset to verify the complete pipeline before scaling.
       </p>
       <ul>
-        <li><strong>Lichess Open Database</strong> — millions of game positions from real human play across all Elo ranges</li>
-        <li><strong>Lumbra's Gigabase</strong> — high-quality curated OTB game database with broad coverage of openings, middlegames, and endgames</li>
+        <li><strong>PGN to FEN</strong> — games are expanded into individual board positions</li>
+        <li><strong>Stockfish MultiPV</strong> — top candidate moves and centipawn evaluations become teacher labels</li>
+        <li><strong>Tensor encoding</strong> — 18 channels encode pieces, side to move, castling rights, and en passant state</li>
       </ul>
       <p style="margin-top:12px;">
-        Each position is encoded as a multi-channel tensor representation of the 8×8 board (piece type, color, castling rights, en passant). Stockfish depth-20 evaluations provide centipawn labels; Lc0 Teacher logits provide soft targets for distillation.
+        MultiPV centipawn scores are converted into soft policy targets so the student can learn that several moves may be reasonable, while the best evaluation is mapped to a bounded value target.
       </p>
 
       <div class="tech-stack">
         <span class="tech-chip">python-chess</span>
-        <span class="tech-chip">Stockfish 17</span>
-        <span class="tech-chip">Lc0 v0.31</span>
+        <span class="tech-chip">Stockfish</span>
         <span class="tech-chip">PyTorch</span>
-        <span class="tech-chip">NumPy</span>
+        <span class="tech-chip">Matplotlib</span>
       </div>
     </div>
 
@@ -540,41 +540,41 @@
     <!-- METHODOLOGY -->
     <div class="card card--tall">
       <div class="card-label"><span class="dot"></span> Methodology</div>
-      <h2>Compression Strategies</h2>
+      <h2>Teacher-Student Pipeline</h2>
       <p>
-        We systematically compare four well-defined compression techniques applied to a Leela Chess Zero (Lc0) baseline. Each strategy targets a different axis of cost reduction, and we evaluate them both independently and in combination.
+        Stockfish is used as the teacher and a compact neural network is trained as the student. The student has a shared convolutional trunk, a policy head for move probabilities, and a value head for board evaluation.
       </p>
 
       <!-- Four Strategies Table -->
       <table class="arch-table" style="margin:14px 0 18px;">
         <thead>
-          <tr><th>Strategy</th><th>Technique</th><th>Cost Axis</th></tr>
+          <tr><th>Stage</th><th>Technique</th><th>Output</th></tr>
         </thead>
         <tbody>
           <tr>
-            <td class="highlight">S1 · Distillation</td>
-            <td>Train Student CNN on Lc0 soft logits + Stockfish hard labels</td>
-            <td>Params, FLOPs</td>
+            <td class="highlight">Data</td>
+            <td>Convert Lichess PGN games into FEN positions</td>
+            <td>Board states</td>
           </tr>
           <tr>
-            <td class="highlight">S2 · Smaller Arch</td>
-            <td>Reduce width (F) &amp; depth (N) of DW-Sep Conv backbone</td>
-            <td>Params, FLOPs</td>
+            <td class="highlight">Teacher</td>
+            <td>Run Stockfish depth-limited MultiPV analysis</td>
+            <td>Top moves + evals</td>
           </tr>
           <tr>
-            <td class="highlight">S3 · Pruning</td>
-            <td>Structured filter pruning (L1-norm) at 30%/50%/70% sparsity</td>
-            <td>FLOPs, latency</td>
+            <td class="highlight">Student</td>
+            <td>Train small CNN and depthwise CNN variants</td>
+            <td>Policy + value</td>
           </tr>
           <tr>
-            <td class="highlight">S4 · Quantization</td>
-            <td>Post-training FP32 → INT8 via PyTorch quantization API</td>
-            <td>Memory, latency</td>
+            <td class="highlight">Analysis</td>
+            <td>Compare accuracy against inference cost</td>
+            <td>Pareto frontier</td>
           </tr>
         </tbody>
       </table>
       <p>
-        Key comparison: each strategy is benchmarked in isolation, and the best-performing combinations (e.g., S1+S2+S4: distilled small model + INT8) are tested to identify compounding benefits on the Pareto frontier.
+        The midpoint implementation has already completed this loop on a small sample. The final run will scale the number of positions, teacher depth, and training epochs.
       </p>
 
       <!-- Pipeline Diagram -->
@@ -582,25 +582,25 @@
         <div class="pipe-node">
           <div class="pipe-icon">♟</div>
           <div class="pipe-title">Positions</div>
-          <div class="pipe-sub">Lichess + Lumbra</div>
+          <div class="pipe-sub">Lichess PGN</div>
         </div>
         <div class="pipe-arrow">→</div>
         <div class="pipe-node">
           <div class="pipe-icon">🔬</div>
           <div class="pipe-title">Stockfish</div>
-          <div class="pipe-sub">Hard labels</div>
+          <div class="pipe-sub">MultiPV labels</div>
         </div>
         <div class="pipe-arrow">→</div>
         <div class="pipe-node" style="border-color:var(--accent-dim);">
           <div class="pipe-icon">🧠</div>
-          <div class="pipe-title">Lc0 Teacher</div>
-          <div class="pipe-sub">Soft logits</div>
+          <div class="pipe-title">Soft Targets</div>
+          <div class="pipe-sub">Move distribution</div>
         </div>
         <div class="pipe-arrow">→</div>
         <div class="pipe-node" style="border-color:var(--green); background:rgba(111,207,151,0.06);">
           <div class="pipe-icon">⚡</div>
-          <div class="pipe-title">S1–S4</div>
-          <div class="pipe-sub">Compress → Eval</div>
+          <div class="pipe-title">Student</div>
+          <div class="pipe-sub">Train + Eval</div>
         </div>
       </div>
 
@@ -643,7 +643,7 @@
       </table>
 
       <!-- Loss Function -->
-      <h2 style="margin-top:22px; font-size:1.1rem;">Combined Distillation Loss</h2>
+      <h2 style="margin-top:22px; font-size:1.1rem;">Student Training Loss</h2>
       <div class="math-block">
         <div class="math-eq">
           <span class="m-sym">ℒ</span>
@@ -666,16 +666,16 @@
         </div>
       </div>
       <p class="eq-note">
-        <span class="m-sym" style="font-family:var(--serif);font-style:italic;color:var(--accent);font-size:0.85rem;">α</span> balances hard-target (Stockfish) loss with soft-target (Teacher KL divergence). <span class="m-sym" style="font-family:var(--serif);font-style:italic;color:var(--accent);font-size:0.85rem;">τ</span> is distillation temperature.
+        The policy term learns a soft distribution from Stockfish MultiPV scores, while the value term regresses the bounded Stockfish evaluation.
       </p>
 
       <h2 style="margin-top:22px; font-size:1.1rem;">Planned Experiments</h2>
       <ul>
-        <li><strong>S1 — Distillation ablation</strong> — compare hard-only (Stockfish MSE), soft-only (Lc0 KL), and combined loss to isolate distillation benefit</li>
-        <li><strong>S2 — Architecture sweep</strong> — vary width F ∈ {32, 64, 128} and depth N ∈ {3, 6, 10, 15} to map capacity vs. cost</li>
-        <li><strong>S3 — Pruning sweep</strong> — apply L1-norm structured filter pruning at 30%, 50%, and 70% sparsity with fine-tuning</li>
-        <li><strong>S4 — Quantization</strong> — apply post-training FP32 → INT8 quantization and measure latency speedup vs. accuracy drop</li>
-        <li><strong>Composition</strong> — combine best S1+S2+S3+S4 configurations and plot all variants on a unified Pareto frontier (MSE vs. latency, MSE vs. params)</li>
+        <li><strong>Scale teacher labels</strong> — increase from 998 midpoint labels to a larger subset of Lichess positions</li>
+        <li><strong>Architecture sweep</strong> — vary width and depth for standard CNN and depthwise separable CNN students</li>
+        <li><strong>Teacher depth sweep</strong> — compare shallow labels against deeper Stockfish analysis</li>
+        <li><strong>Training duration</strong> — measure how move agreement and value error change with more epochs</li>
+        <li><strong>Pareto analysis</strong> — plot Top-1 agreement and value RMSE against parameters, model size, and CPU latency</li>
       </ul>
     </div>
 
@@ -688,30 +688,30 @@
 
       <div class="placeholder">
         <div class="ph-icon">📊</div>
-        <div class="ph-label">[ Pareto Frontier: MSE vs. Latency — All Strategies (S1–S4) &amp; Compositions ]</div>
+        <div class="ph-label">[ Pareto Frontier: Top-1 Move Agreement vs. CPU Latency ]</div>
       </div>
       <p style="margin-top:8px;">
-        Every model variant (distilled, reduced-arch, pruned, quantized, and composed combinations) plotted by evaluation error against wall-clock inference time on an ARM edge device. The Pareto-optimal curve identifies which strategies dominate.
+        Every student variant will be plotted by Stockfish imitation quality against measured batch-1 CPU inference time. The Pareto-optimal curve identifies models that preserve the most teacher behavior for the least cost.
       </p>
 
       <div class="placeholder placeholder-sm">
         <div class="ph-icon">📈</div>
-        <div class="ph-label">[ S2 Architecture Sweep — Accuracy vs. Params (Width × Depth) ]</div>
+        <div class="ph-label">[ Architecture Sweep — Top-1 / Top-3 Agreement vs. Params ]</div>
       </div>
 
       <div class="placeholder placeholder-sm">
         <div class="ph-icon">🔥</div>
-        <div class="ph-label">[ S1 Distillation Ablation — Hard vs. Soft vs. Combined Loss ]</div>
+        <div class="ph-label">[ Value Head — Stockfish Value RMSE and Correlation ]</div>
       </div>
 
       <div class="placeholder placeholder-sm">
         <div class="ph-icon">✂️</div>
-        <div class="ph-label">[ S3 Pruning — Accuracy vs. Sparsity (30% / 50% / 70%) ]</div>
+        <div class="ph-label">[ Teacher Depth Sweep — Label Quality vs. Runtime Cost ]</div>
       </div>
 
       <div class="placeholder placeholder-sm">
         <div class="ph-icon">⏱</div>
-        <div class="ph-label">[ S4 INT8 Quantization — Accuracy Drop vs. Speedup ]</div>
+        <div class="ph-label">[ Final Results Table — Accuracy, Params, Memory, Latency ]</div>
       </div>
     </div>
 
@@ -721,23 +721,23 @@
       <h2>Key Prior Work</h2>
 
       <div class="ref-item">
-        <div class="ref-title">1. Hinton et al., "Distilling the Knowledge in a Neural Network" (2015)</div>
+        <div class="ref-title">1. Silver et al., "Mastering Chess and Shogi by Self-Play" (AlphaZero, 2018)</div>
         <div class="ref-body">
-          Introduced knowledge distillation, training a small student network to mimic a large teacher's softened output distribution. This foundational technique underpins our S1 distillation strategy — we adopt the temperature-scaled KL divergence loss directly from this work.
+          Demonstrated that policy/value neural networks can guide high-level chess play when combined with search. Our project uses a related policy/value framing, but studies small supervised students rather than self-play training.
         </div>
       </div>
 
       <div class="ref-item">
-        <div class="ref-title">2. Howard et al., "MobileNets: Efficient CNNs for Mobile Vision" (2017)</div>
+        <div class="ref-title">2. Stockfish and NNUE Evaluation</div>
         <div class="ref-body">
-          Proposed depthwise separable convolutions to dramatically reduce computation and model size for mobile deployment. Our S2 Student architecture directly adapts this factorization to the chess board tensor, replacing standard convolutions to achieve edge-viable FLOPs.
+          Stockfish combines optimized search with a strong evaluation function and can run locally as a UCI engine. We use it as a reproducible teacher that generates best-move and centipawn labels for FEN positions.
         </div>
       </div>
 
       <div class="ref-item">
-        <div class="ref-title">3. Li et al., "Pruning Filters for Efficient ConvNets" (ICLR 2017)</div>
+        <div class="ref-title">3. Hinton et al. Distillation and MobileNet Efficient CNNs</div>
         <div class="ref-body">
-          Demonstrated that ranking convolutional filters by L1-norm and removing the least important ones yields compact models with minimal accuracy loss after fine-tuning. We apply this structured pruning approach as our S3 strategy, sweeping sparsity levels to map the pruning–accuracy tradeoff.
+          Knowledge distillation motivates learning from a stronger teacher's softened outputs, while MobileNet-style depthwise separable convolutions motivate our lightweight architecture comparison for low-cost inference.
         </div>
       </div>
     </div>
