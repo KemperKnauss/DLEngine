@@ -25,7 +25,20 @@ poster/     Draft poster source and poster-specific assets.
 src/        Small code modules as experiments begin.
 figures/    Diagrams, plots, and result placeholders.
 data/       Local datasets and generated labels; large files are ignored.
+scripts/    Experiment commands for FEN extraction, Stockfish labeling, training, evaluation, and plots.
 ```
+
+## Stockfish Distillation Pipeline
+
+The repo includes a runnable teacher/student workflow:
+
+1. Extract FEN positions from PGN files.
+2. Run local Stockfish MultiPV analysis to create soft teacher labels.
+3. Train a compact CNN or depthwise separable CNN student with policy and value heads.
+4. Evaluate Stockfish move agreement, value error, parameter count, model size, and latency.
+5. Plot Pareto-frontier graphs for accuracy versus efficiency.
+
+See [docs/stockfish_distillation_workflow.md](docs/stockfish_distillation_workflow.md) for commands.
 
 ## Midpoint Deliverables
 

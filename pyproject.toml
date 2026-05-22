@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chess-evaluation-compression"
+version = "0.1.0"
+description = "Stockfish-distilled compact chess student experiments."
+requires-python = ">=3.10"
+dependencies = [
+  "python-chess>=1.999",
+  "torch>=2.2",
+  "pandas>=2.0",
+  "matplotlib>=3.8",
+  "tqdm>=4.66",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+

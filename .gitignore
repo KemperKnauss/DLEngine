@@ -1,6 +1,7 @@
 # Python
 __pycache__/
 *.py[cod]
+*.egg-info/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -9,11 +10,13 @@ venv/
 
 # Data and generated artifacts
 data/raw/
+data/raw_games/
 data/processed/
 data/labels/
 checkpoints/
 runs/
 outputs/
+tools/
 
 # Model files
 *.pt
