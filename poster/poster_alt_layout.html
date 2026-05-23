@@ -3,23 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chess Evaluation Network Compression — Research Poster</title>
+<title>Stockfish Student Model — Alternative Poster Layout</title>
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0f1117;
-    --surface: #181b24;
-    --surface-alt: #1e2230;
-    --border: #2a2f3e;
-    --accent: #7eb8f7;
-    --accent-dim: #3d6a9e;
-    --accent-glow: rgba(126, 184, 247, 0.08);
+    --bg: #111318;
+    --surface: #f4f1ea;
+    --surface-alt: #ffffff;
+    --border: #d6d0c4;
+    --accent: #256d85;
+    --accent-dim: #87aeb9;
+    --accent-glow: rgba(37, 109, 133, 0.08);
     --green: #6fcf97;
     --amber: #f2c94c;
     --coral: #eb5757;
-    --text: #e4e7ee;
-    --text-secondary: #9ca3b4;
-    --text-dim: #636b80;
+    --text: #20242b;
+    --text-secondary: #4f5966;
+    --text-dim: #7a828e;
     --serif: 'Source Serif 4', Georgia, serif;
     --sans: 'DM Sans', system-ui, sans-serif;
     --mono: 'JetBrains Mono', monospace;
@@ -28,7 +28,7 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
-    background: var(--bg);
+    background: #20242b;
     color: var(--text);
     font-family: var(--sans);
     min-height: 100vh;
@@ -36,30 +36,23 @@
   }
 
   .poster {
-    max-width: 1320px;
+    max-width: 1220px;
     margin: 0 auto;
     padding: 40px 32px 60px;
   }
 
   /* ───── HEADER ───── */
   .header {
-    text-align: center;
-    padding: 48px 40px 44px;
+    text-align: left;
+    padding: 42px 46px 38px;
     border: 1px solid var(--border);
     border-radius: 16px;
-    background: linear-gradient(168deg, var(--surface) 0%, var(--bg) 100%);
+    background: var(--surface);
     position: relative;
     overflow: hidden;
     margin-bottom: 28px;
   }
-  .header::before {
-    content: '';
-    position: absolute;
-    top: -120px; left: 50%; transform: translateX(-50%);
-    width: 600px; height: 260px;
-    background: radial-gradient(ellipse, rgba(126,184,247,0.07) 0%, transparent 70%);
-    pointer-events: none;
-  }
+  .header::before { display: none; }
   .header-tag {
     display: inline-block;
     font-family: var(--mono);
@@ -69,7 +62,7 @@
     color: var(--accent);
     border: 1px solid var(--accent-dim);
     padding: 5px 16px;
-    border-radius: 20px;
+    border-radius: 6px;
     margin-bottom: 22px;
     background: var(--accent-glow);
   }
@@ -78,16 +71,16 @@
     font-size: 2.6rem;
     font-weight: 700;
     line-height: 1.22;
-    color: #fff;
-    max-width: 900px;
-    margin: 0 auto 14px;
+    color: var(--text);
+    max-width: 860px;
+    margin: 0 0 14px;
   }
   .header h1 span { color: var(--accent); }
   .header .subtitle {
     font-size: 1.05rem;
     color: var(--text-secondary);
-    max-width: 720px;
-    margin: 0 auto 20px;
+    max-width: 850px;
+    margin: 0 0 20px;
     line-height: 1.55;
   }
   .authors {
@@ -100,11 +93,12 @@
   /* ───── GRID ───── */
   .grid {
     display: grid;
-    grid-template-columns: 1fr 1.15fr 1fr;
+    grid-template-columns: 0.9fr 1.1fr;
     gap: 24px;
   }
   @media (max-width: 960px) {
     .grid { grid-template-columns: 1fr; }
+    .grid > .card:nth-child(n) { grid-column: auto; grid-row: auto; }
   }
 
   /* ───── CARD ───── */
@@ -115,7 +109,12 @@
     padding: 30px 28px 28px;
     position: relative;
   }
-  .card--tall { grid-row: span 2; }
+  .grid > .card:nth-child(1) { grid-column: 1; }
+  .grid > .card:nth-child(2) { grid-column: 1; }
+  .grid > .card:nth-child(3) { grid-column: 2; grid-row: 1 / span 3; }
+  .grid > .card:nth-child(4) { grid-column: 1; }
+  .grid > .card:nth-child(5) { grid-column: 1 / span 2; }
+  .card--tall { grid-row: span 3; }
   .card-label {
     font-family: var(--mono);
     font-size: 10px;
@@ -136,7 +135,7 @@
     font-family: var(--serif);
     font-size: 1.35rem;
     font-weight: 600;
-    color: #fff;
+    color: var(--text);
     margin-bottom: 14px;
   }
   .card p, .card li {
@@ -449,7 +448,7 @@
 
   <!-- ═══════════ HEADER ═══════════ -->
   <div class="header">
-    <div class="header-tag">Draft Research Poster</div>
+    <div class="header-tag">Draft Research Poster · Alternative Layout</div>
     <h1>Distilling Stockfish into a <span>Lightweight Student Model</span></h1>
     <p class="subtitle">
       We are building a smaller-weight CNN student that approximates Stockfish's move choices and board evaluations while staying practical for edge-device CPU inference.
@@ -693,19 +692,6 @@
         <div class="ph-icon">⏱</div>
         <div class="ph-label">[ Final Results Table — Accuracy, Weights, Memory, Latency ]</div>
       </div>
-    </div>
-
-    <!-- PLANNED EXPERIMENTS -->
-    <div class="card">
-      <div class="card-label"><span class="dot"></span> Experiments</div>
-      <h2>Planned Experiments</h2>
-      <ul>
-        <li><strong>Scale teacher labels</strong> — increase the number of labeled Lichess positions and keep a held-out test set for evaluation</li>
-        <li><strong>Smaller-weight students</strong> — sweep width and depth for standard CNN and depthwise separable CNN models</li>
-        <li><strong>Teacher depth sweep</strong> — compare faster shallow Stockfish labels against slower, stronger labels</li>
-        <li><strong>Training duration</strong> — measure how move agreement and value error change with more epochs</li>
-        <li><strong>Edge-device analysis</strong> — plot Top-1 agreement and value RMSE against parameter count, model size, and CPU latency</li>
-      </ul>
     </div>
 
   </div><!-- /grid -->
