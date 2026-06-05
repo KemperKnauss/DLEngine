@@ -25,14 +25,16 @@ def label_positions(
     depth: int,
     multipv: int,
     limit_positions: int | None,
-) -> int:
+) -> tuple[int, dict]:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with fen_path.open("r", encoding="utf-8") as handle:
         fens = [line.strip() for line in handle if line.strip()]
+    input_positions = len(fens)
     if limit_positions is not None:
         fens = fens[:limit_positions]
 
     engine = chess.engine.SimpleEngine.popen_uci(stockfish_path)
+    engine_id = dict(engine.id)
     written = 0
     try:
         with output_path.open("w", encoding="utf-8") as out:
@@ -55,21 +57,37 @@ def label_positions(
     finally:
         engine.quit()
 
-    return written
+    return written, {
+        "fens": str(fen_path),
+        "out": str(output_path),
+        "stockfish_path": stockfish_path,
+        "stockfish_id": engine_id,
+        "depth": depth,
+        "multipv": multipv,
+        "limit_positions": limit_positions,
+        "input_positions": input_positions,
+        "attempted_positions": len(fens),
+        "labeled_positions": written,
+    }
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate Stockfish MultiPV labels for FEN positions.")
     parser.add_argument("--fens", type=Path, default=Path("data/processed/fens.txt"))
     parser.add_argument("--out", type=Path, default=Path("data/labels/stockfish_labels.jsonl"))
+    parser.add_argument("--metadata-out", type=Path, default=None)
     parser.add_argument("--stockfish-path", required=True, help="Path to the local Stockfish executable.")
     parser.add_argument("--depth", type=int, default=10)
     parser.add_argument("--multipv", type=int, default=5)
     parser.add_argument("--limit-positions", type=int, default=None)
     args = parser.parse_args()
 
-    written = label_positions(args.fens, args.out, args.stockfish_path, args.depth, args.multipv, args.limit_positions)
+    written, metadata = label_positions(args.fens, args.out, args.stockfish_path, args.depth, args.multipv, args.limit_positions)
     print(f"Wrote {written} labeled positions to {args.out}")
+    metadata_path = args.metadata_out or args.out.with_suffix(".metadata.json")
+    with metadata_path.open("w", encoding="utf-8") as handle:
+        json.dump(metadata, handle, indent=2)
+    print(f"Wrote label metadata to {metadata_path}")
 
 
 if __name__ == "__main__":

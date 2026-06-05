@@ -13,6 +13,8 @@ dependencies = [
   "pandas>=2.0",
   "matplotlib>=3.8",
   "tqdm>=4.66",
+  "wandb>=0.17",
+  "zstandard>=0.23",
 ]
 
 [tool.setuptools.packages.find]

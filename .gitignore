@@ -13,10 +13,12 @@ data/raw/
 data/raw_games/
 data/processed/
 data/labels/
+data/overnight/
 checkpoints/
 runs/
 outputs/
 tools/
+wandb/
 
 # Model files
 *.pt

@@ -16,12 +16,13 @@ def centipawns_to_value(eval_cp: float, scale: float = 1000.0) -> float:
     return math.tanh(float(eval_cp) / scale)
 
 
-def multipv_policy(labels: list[dict], temperature_cp: float) -> torch.Tensor:
+def multipv_policy(labels: list[dict], temperature_cp: float, turn: chess.Color) -> torch.Tensor:
     policy = torch.zeros(ACTION_SIZE, dtype=torch.float32)
     if not labels:
         return policy
 
-    scores = torch.tensor([float(row["eval_cp"]) for row in labels], dtype=torch.float32)
+    perspective = 1.0 if turn == chess.WHITE else -1.0
+    scores = torch.tensor([perspective * float(row["eval_cp"]) for row in labels], dtype=torch.float32)
     probs = torch.softmax(scores / temperature_cp, dim=0)
     for row, prob in zip(labels, probs):
         move = chess.Move.from_uci(row["move"])
@@ -53,7 +54,7 @@ class StockfishJsonlDataset(Dataset):
         return {
             "fen": row["fen"],
             "board": board_to_tensor(board),
-            "policy": multipv_policy(labels, self.temperature_cp),
+            "policy": multipv_policy(labels, self.temperature_cp, board.turn),
             "best_move": torch.tensor(move_to_index(chess.Move.from_uci(labels[0]["move"])), dtype=torch.long),
             "value": torch.tensor([centipawns_to_value(best_eval, self.value_scale_cp)], dtype=torch.float32),
         }

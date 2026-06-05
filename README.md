@@ -40,6 +40,13 @@ The repo includes a runnable teacher/student workflow:
 
 See [docs/stockfish_distillation_workflow.md](docs/stockfish_distillation_workflow.md) for commands.
 
+## Overnight Experiment Handoff
+
+The current distillation + compression experiment implementation and results are summarized in
+[docs/experiment_handoff.md](docs/experiment_handoff.md). It records the streamed Lichess dataset,
+Stockfish settings, held-out split sizes, wandb project, final metrics, compression results, plots,
+and resume commands for another agent or human.
+
 ## Midpoint Deliverables
 
 - Draft poster with complete structure and placeholders for results.

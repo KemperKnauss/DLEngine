@@ -3,3 +3,5 @@ torch>=2.2
 pandas>=2.0
 matplotlib>=3.8
 tqdm>=4.66
+wandb>=0.17
+zstandard>=0.23
