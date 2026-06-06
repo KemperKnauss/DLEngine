@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
 
-from chess_student.data import StockfishJsonlDataset
+from chess_student.data import StockfishJsonlDataset, mask_illegal_logits
 from chess_student.models import build_model, count_parameters
 
 
@@ -54,6 +54,7 @@ def run_epoch(
         policy = batch["policy"].to(device)
         value = batch["value"].to(device)
         policy_logits, value_pred = model(boards)
+        policy_logits = mask_illegal_logits(policy_logits, batch["legal_indices"])
         policy_loss = soft_cross_entropy(policy_logits, policy)
         value_loss = F.mse_loss(value_pred, value)
         loss = policy_loss + value_loss_weight * value_loss

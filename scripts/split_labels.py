@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
+from collections import defaultdict
 from pathlib import Path
 
 
@@ -34,6 +35,36 @@ def write_rows(rows: list[str], indices: list[int], output_path: Path) -> None:
             handle.write(rows[index])
 
 
+def grouped_split_indices(
+    rows: list[str],
+    group_key: str,
+    val_fraction: float,
+    test_fraction: float,
+    seed: int,
+) -> dict[str, list[int]]:
+    groups: dict[str, list[int]] = defaultdict(list)
+    for index, line in enumerate(rows):
+        row = json.loads(line)
+        if group_key not in row:
+            raise ValueError(f"Row {index} is missing group key {group_key!r}.")
+        groups[str(row[group_key])].append(index)
+
+    group_names = list(groups)
+    random.Random(seed).shuffle(group_names)
+    target_test = len(rows) * test_fraction
+    target_val = len(rows) * val_fraction
+    result = {"train": [], "val": [], "test": []}
+    for group_name in group_names:
+        if len(result["test"]) < target_test:
+            destination = "test"
+        elif len(result["val"]) < target_val:
+            destination = "val"
+        else:
+            destination = "train"
+        result[destination].extend(groups[group_name])
+    return result
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Create deterministic train/val/test label splits.")
     parser.add_argument("--labels", type=Path, required=True)
@@ -41,12 +72,16 @@ def main() -> None:
     parser.add_argument("--val-fraction", type=float, default=0.1)
     parser.add_argument("--test-fraction", type=float, default=0.1)
     parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument("--group-key", default=None)
     args = parser.parse_args()
 
     with args.labels.open("r", encoding="utf-8") as handle:
         rows = [line for line in handle if line.strip()]
 
-    splits = split_indices(len(rows), args.val_fraction, args.test_fraction, args.seed)
+    if args.group_key:
+        splits = grouped_split_indices(rows, args.group_key, args.val_fraction, args.test_fraction, args.seed)
+    else:
+        splits = split_indices(len(rows), args.val_fraction, args.test_fraction, args.seed)
     paths = {
         "train": args.out_dir / "train.jsonl",
         "val": args.out_dir / "val.jsonl",
@@ -61,6 +96,7 @@ def main() -> None:
         "val_fraction": args.val_fraction,
         "test_fraction": args.test_fraction,
         "total_rows": len(rows),
+        "group_key": args.group_key,
         "splits": {
             name: {
                 "path": str(paths[name]),

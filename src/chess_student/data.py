@@ -10,6 +10,8 @@ from torch.utils.data import Dataset
 
 from .encoding import ACTION_SIZE, board_to_tensor, move_to_index
 
+MAX_LEGAL_MOVES = 256
+
 
 def centipawns_to_value(eval_cp: float, scale: float = 1000.0) -> float:
     """Map centipawns to a stable regression target in roughly [-1, 1]."""
@@ -28,6 +30,23 @@ def multipv_policy(labels: list[dict], temperature_cp: float, turn: chess.Color)
         move = chess.Move.from_uci(row["move"])
         policy[move_to_index(move)] = prob
     return policy
+
+
+def legal_action_indices(board: chess.Board) -> torch.Tensor:
+    indices = torch.full((MAX_LEGAL_MOVES,), -1, dtype=torch.long)
+    moves = [move_to_index(move) for move in board.legal_moves]
+    indices[: len(moves)] = torch.tensor(moves, dtype=torch.long)
+    return indices
+
+
+def mask_illegal_logits(logits: torch.Tensor, legal_indices: torch.Tensor) -> torch.Tensor:
+    """Mask non-legal actions before policy loss or move ranking."""
+    legal_indices = legal_indices.to(logits.device)
+    valid = legal_indices >= 0
+    safe_indices = legal_indices.clamp_min(0)
+    legal_masks = torch.zeros_like(logits, dtype=torch.bool)
+    legal_masks.scatter_(1, safe_indices, valid)
+    return logits.masked_fill(~legal_masks, torch.finfo(logits.dtype).min)
 
 
 class StockfishJsonlDataset(Dataset):
@@ -54,6 +73,7 @@ class StockfishJsonlDataset(Dataset):
         return {
             "fen": row["fen"],
             "board": board_to_tensor(board),
+            "legal_indices": legal_action_indices(board),
             "policy": multipv_policy(labels, self.temperature_cp, board.turn),
             "best_move": torch.tensor(move_to_index(chess.Move.from_uci(labels[0]["move"])), dtype=torch.long),
             "value": torch.tensor([centipawns_to_value(best_eval, self.value_scale_cp)], dtype=torch.float32),

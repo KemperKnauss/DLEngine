@@ -10,7 +10,7 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-from chess_student.data import StockfishJsonlDataset
+from chess_student.data import StockfishJsonlDataset, mask_illegal_logits
 from chess_student.models import build_model, count_parameters
 
 
@@ -77,6 +77,7 @@ def evaluate(args: argparse.Namespace) -> dict[str, float | int | str]:
             best_move = batch["best_move"].to(device)
             target_value = batch["value"].to(device)
             policy_logits, value_pred = model(boards)
+            policy_logits = mask_illegal_logits(policy_logits, batch["legal_indices"])
 
             policy_losses.append((-(target_policy * F.log_softmax(policy_logits, dim=1)).sum(dim=1)).cpu())
             predictions = torch.topk(policy_logits, k=3, dim=1).indices

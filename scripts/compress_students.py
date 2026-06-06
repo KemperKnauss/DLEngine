@@ -15,7 +15,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from chess_student.data import StockfishJsonlDataset
+from chess_student.data import StockfishJsonlDataset, mask_illegal_logits
 from chess_student.models import build_model, count_parameters
 from scripts.train_student import soft_cross_entropy
 
@@ -104,6 +104,7 @@ def evaluate_model(
             best_move = batch["best_move"].to(device)
             target_value = batch["value"].to(device)
             policy_logits, value_pred = model(boards)
+            policy_logits = mask_illegal_logits(policy_logits, batch["legal_indices"])
             policy_losses.append((-(target_policy * F.log_softmax(policy_logits, dim=1)).sum(dim=1)).cpu())
             predictions = torch.topk(policy_logits, k=3, dim=1).indices
             top1 += int((predictions[:, 0] == best_move).sum().item())
@@ -190,7 +191,7 @@ def remove_pruning(model: nn.Module) -> None:
             prune.remove(module, parameter_name)
 
 
-def finetune_pruned(
+def finetune_model(
     model: nn.Module,
     labels_path: Path,
     device: torch.device,
@@ -206,11 +207,12 @@ def finetune_pruned(
     for epoch in range(1, epochs + 1):
         total_loss = 0.0
         total = 0
-        for batch in tqdm(loader, desc=f"prune finetune {epoch}"):
+        for batch in tqdm(loader, desc=f"finetune {epoch}"):
             boards = batch["board"].to(device)
             policy = batch["policy"].to(device)
             value = batch["value"].to(device)
             policy_logits, value_pred = model(boards)
+            policy_logits = mask_illegal_logits(policy_logits, batch["legal_indices"])
             policy_loss = soft_cross_entropy(policy_logits, policy)
             value_loss = F.mse_loss(value_pred, value)
             loss = policy_loss + value_loss_weight * value_loss
@@ -219,7 +221,7 @@ def finetune_pruned(
             optimizer.step()
             total += boards.size(0)
             total_loss += loss.item() * boards.size(0)
-        print(f"prune_finetune_epoch={epoch} loss={total_loss / max(1, total):.4f}")
+        print(f"finetune_epoch={epoch} loss={total_loss / max(1, total):.4f}")
 
 
 def save_model_object(model: nn.Module, path: Path) -> None:
@@ -250,6 +252,42 @@ def main() -> None:
         base_label = checkpoint_path.parent.name
         model, checkpoint = load_student(checkpoint_path, device)
 
+        control = deepcopy(model).to(device)
+        finetune_model(
+            control,
+            args.train_labels,
+            device,
+            args.prune_finetune_epochs,
+            args.batch_size,
+            args.prune_lr,
+            args.value_loss_weight,
+        )
+        control_path = args.out_dir / f"{base_label}_finetune_control.pt"
+        control_path.parent.mkdir(parents=True, exist_ok=True)
+        torch.save(
+            {
+                "model_name": checkpoint["model_name"],
+                "channels": checkpoint["channels"],
+                "depth": checkpoint["depth"],
+                "state_dict": control.state_dict(),
+                "params": count_parameters(control),
+                "compression": "finetune_control",
+            },
+            control_path,
+        )
+        control_metrics = evaluate_model(
+            control,
+            args.test_labels,
+            args.batch_size,
+            args.latency_repeats,
+            device,
+            f"{base_label}_finetune_control",
+            control_path,
+            "finetune_control",
+        )
+        append_metrics(args.metrics_out, control_metrics)
+        maybe_log_wandb(args, control_metrics, "pruning_control")
+
         quantized = quantize_model(model)
         quantized_path = args.out_dir / f"{base_label}_dynamic_quantized.pt"
         save_model_object(quantized, quantized_path)
@@ -269,7 +307,7 @@ def main() -> None:
         for sparsity in args.prune_sparsities:
             pruned = deepcopy(model).to(device)
             apply_pruning(pruned, sparsity)
-            finetune_pruned(
+            finetune_model(
                 pruned,
                 args.train_labels,
                 device,

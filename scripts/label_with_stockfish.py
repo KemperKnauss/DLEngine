@@ -20,6 +20,7 @@ def score_to_centipawns(score: chess.engine.PovScore) -> int:
 
 def label_positions(
     fen_path: Path,
+    game_ids_path: Path | None,
     output_path: Path,
     stockfish_path: str,
     depth: int,
@@ -29,6 +30,12 @@ def label_positions(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with fen_path.open("r", encoding="utf-8") as handle:
         fens = [line.strip() for line in handle if line.strip()]
+    game_ids = None
+    if game_ids_path:
+        with game_ids_path.open("r", encoding="utf-8") as handle:
+            game_ids = [line.strip() for line in handle if line.strip()]
+        if len(game_ids) != len(fens):
+            raise ValueError("game IDs and FEN files must contain the same number of rows.")
     input_positions = len(fens)
     if limit_positions is not None:
         fens = fens[:limit_positions]
@@ -38,7 +45,7 @@ def label_positions(
     written = 0
     try:
         with output_path.open("w", encoding="utf-8") as out:
-            for fen in tqdm(fens, desc="stockfish"):
+            for index, fen in enumerate(tqdm(fens, desc="stockfish")):
                 board = chess.Board(fen)
                 infos = engine.analyse(board, chess.engine.Limit(depth=depth), multipv=multipv)
                 if isinstance(infos, dict):
@@ -52,13 +59,17 @@ def label_positions(
                     labels.append({"move": pv[0].uci(), "eval_cp": score_to_centipawns(info["score"])})
 
                 if labels:
-                    out.write(json.dumps({"fen": fen, "labels": labels}) + "\n")
+                    row = {"fen": fen, "labels": labels}
+                    if game_ids is not None:
+                        row["game_id"] = game_ids[index]
+                    out.write(json.dumps(row) + "\n")
                     written += 1
     finally:
         engine.quit()
 
     return written, {
         "fens": str(fen_path),
+        "game_ids": str(game_ids_path) if game_ids_path else None,
         "out": str(output_path),
         "stockfish_path": stockfish_path,
         "stockfish_id": engine_id,
@@ -74,6 +85,7 @@ def label_positions(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate Stockfish MultiPV labels for FEN positions.")
     parser.add_argument("--fens", type=Path, default=Path("data/processed/fens.txt"))
+    parser.add_argument("--game-ids", type=Path, default=None)
     parser.add_argument("--out", type=Path, default=Path("data/labels/stockfish_labels.jsonl"))
     parser.add_argument("--metadata-out", type=Path, default=None)
     parser.add_argument("--stockfish-path", required=True, help="Path to the local Stockfish executable.")
@@ -82,7 +94,15 @@ def main() -> None:
     parser.add_argument("--limit-positions", type=int, default=None)
     args = parser.parse_args()
 
-    written, metadata = label_positions(args.fens, args.out, args.stockfish_path, args.depth, args.multipv, args.limit_positions)
+    written, metadata = label_positions(
+        args.fens,
+        args.game_ids,
+        args.out,
+        args.stockfish_path,
+        args.depth,
+        args.multipv,
+        args.limit_positions,
+    )
     print(f"Wrote {written} labeled positions to {args.out}")
     metadata_path = args.metadata_out or args.out.with_suffix(".metadata.json")
     with metadata_path.open("w", encoding="utf-8") as handle:

@@ -47,6 +47,10 @@ The current distillation + compression experiment implementation and results are
 Stockfish settings, held-out split sizes, wandb project, final metrics, compression results, plots,
 and resume commands for another agent or human.
 
+The corrected 75k-label experiment, including legal-move masking, game-grouped splits, matched
+pruning controls, final plots, and the results poster, is documented in
+[docs/experiment_v2_handoff.md](docs/experiment_v2_handoff.md).
+
 ## Midpoint Deliverables
 
 - Draft poster with complete structure and placeholders for results.

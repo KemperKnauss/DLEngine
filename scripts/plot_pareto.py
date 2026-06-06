@@ -1,10 +1,19 @@
 from __future__ import annotations
 
 import argparse
+import re
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
+
+
+def display_model_name(model: str) -> str:
+    match = re.search(r"(small|depthwise)_cnn_(\d+)x(\d+)", str(model))
+    if not match:
+        return str(model)
+    family = "SCNN" if match.group(1) == "small" else "DW-CNN"
+    return f"{family}-{match.group(2)}x{match.group(3)}"
 
 
 def pareto_mask(frame: pd.DataFrame, x_col: str, y_col: str, maximize_y: bool) -> pd.Series:
@@ -30,14 +39,40 @@ def plot_frontier(frame: pd.DataFrame, x_col: str, y_col: str, maximize_y: bool,
     clean = clean.sort_values(x_col)
     frontier = clean[pareto_mask(clean, x_col, y_col, maximize_y)].sort_values(x_col)
 
-    plt.figure(figsize=(7.5, 5.0))
-    plt.scatter(clean[x_col], clean[y_col], s=72, alpha=0.72, label="models")
+    plt.figure(figsize=(8.2, 5.4))
+    for family, group in clean.groupby(clean["model"].str.startswith("depthwise").map({True: "Depthwise CNN", False: "Small CNN"})):
+        plt.scatter(group[x_col], group[y_col], s=72, alpha=0.78, label=family)
     plt.plot(frontier[x_col], frontier[y_col], linewidth=2.4, marker="o", label="Pareto frontier")
+    offsets = {
+        "SCNN-16x3": (7, 7),
+        "SCNN-32x3": (7, -13),
+        "SCNN-64x3": (7, 7),
+        "SCNN-32x5": (-74, -14),
+        "SCNN-64x5": (-74, -14),
+        "DW-CNN-16x3": (7, 7),
+        "DW-CNN-32x3": (7, 7),
+        "DW-CNN-64x3": (-78, -14),
+        "DW-CNN-32x5": (7, 7),
+        "DW-CNN-64x5": (7, -14),
+    }
     for _, row in clean.iterrows():
-        plt.annotate(str(row["model"]), (row[x_col], row[y_col]), xytext=(5, 4), textcoords="offset points", fontsize=8)
-    plt.xlabel(x_col.replace("_", " "))
-    plt.ylabel(y_col.replace("_", " "))
-    plt.title(f"Pareto frontier: {y_col.replace('_', ' ')} vs {x_col.replace('_', ' ')}")
+        label = display_model_name(row["model"])
+        plt.annotate(
+            label,
+            (row[x_col], row[y_col]),
+            xytext=offsets.get(label, (6, 5)),
+            textcoords="offset points",
+            fontsize=7.5,
+        )
+    labels = {
+        "latency_ms": "CPU latency (ms / position)",
+        "top1": "Top-1 move accuracy",
+        "params": "Trainable parameters",
+        "value_rmse": "Value RMSE",
+    }
+    plt.xlabel(labels.get(x_col, x_col.replace("_", " ")))
+    plt.ylabel(labels.get(y_col, y_col.replace("_", " ")))
+    plt.title(f"{labels.get(y_col, y_col)} vs {labels.get(x_col, x_col)}")
     plt.grid(True, alpha=0.25)
     plt.legend()
     plt.tight_layout()

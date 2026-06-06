@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compressing Stockfish Knowledge for Lightweight Chess Models</title>
+<style>
+  :root {
+    --ink: #17212b;
+    --muted: #52606d;
+    --paper: #f7f8fa;
+    --white: #ffffff;
+    --blue: #176b87;
+    --teal: #168477;
+    --orange: #d86f24;
+    --red: #b8413e;
+    --line: #d4dbe2;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: #dfe5ea;
+    color: var(--ink);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  .poster {
+    width: min(1400px, 100%);
+    margin: 0 auto;
+    background: var(--paper);
+    min-height: 100vh;
+  }
+
+  header {
+    padding: 30px 42px 25px;
+    color: var(--white);
+    background: #153346;
+    border-bottom: 7px solid var(--orange);
+  }
+
+  h1 {
+    margin: 0 0 8px;
+    font-size: 46px;
+    line-height: 1.05;
+    letter-spacing: 0;
+  }
+
+  .subtitle {
+    font-size: 21px;
+    line-height: 1.35;
+    color: #d9e8ef;
+  }
+
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    background: var(--white);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .stat {
+    padding: 18px 24px;
+    border-right: 1px solid var(--line);
+  }
+
+  .stat:last-child { border-right: 0; }
+
+  .stat strong {
+    display: block;
+    color: var(--blue);
+    font-size: 27px;
+    line-height: 1;
+  }
+
+  .stat span {
+    display: block;
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  main {
+    display: grid;
+    grid-template-columns: 0.92fr 1.18fr 0.92fr;
+    gap: 18px;
+    padding: 20px;
+  }
+
+  .column {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+  }
+
+  section {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-top: 5px solid var(--blue);
+    padding: 16px 18px;
+  }
+
+  section.orange { border-top-color: var(--orange); }
+  section.teal { border-top-color: var(--teal); }
+  section.red { border-top-color: var(--red); }
+
+  h2 {
+    margin: 0 0 10px;
+    font-size: 22px;
+    line-height: 1.15;
+    letter-spacing: 0;
+  }
+
+  h3 {
+    margin: 12px 0 6px;
+    font-size: 16px;
+    letter-spacing: 0;
+  }
+
+  p, li {
+    font-size: 14px;
+    line-height: 1.42;
+  }
+
+  p { margin: 7px 0; }
+  ul { margin: 7px 0; padding-left: 20px; }
+  li { margin: 5px 0; }
+
+  .question {
+    font-size: 18px;
+    line-height: 1.42;
+    font-weight: 700;
+    color: var(--blue);
+  }
+
+  .flow {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+
+  .flow div {
+    padding: 9px 10px;
+    background: #eef4f6;
+    border-left: 4px solid var(--teal);
+    font-size: 13px;
+    line-height: 1.3;
+  }
+
+  figure { margin: 0; }
+
+  figure img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--line);
+    background: var(--white);
+  }
+
+  figcaption {
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  th, td {
+    padding: 7px 6px;
+    border-bottom: 1px solid var(--line);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  th:first-child, td:first-child { text-align: left; }
+  th { background: #edf2f5; color: #344451; }
+  tr.best td { font-weight: 700; color: var(--blue); }
+
+  .callout {
+    padding: 12px 13px;
+    background: #fff2e8;
+    border-left: 5px solid var(--orange);
+    font-size: 14px;
+    line-height: 1.42;
+  }
+
+  .finding {
+    display: grid;
+    grid-template-columns: 44px 1fr;
+    gap: 10px;
+    align-items: start;
+    margin: 10px 0;
+  }
+
+  .finding > strong {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    color: var(--white);
+    background: var(--teal);
+    font-size: 16px;
+  }
+
+  .finding p { margin: 0; }
+
+  footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 13px 22px 18px;
+    color: var(--muted);
+    font-size: 11px;
+    border-top: 1px solid var(--line);
+  }
+
+  code {
+    font-family: Consolas, monospace;
+    font-size: 0.94em;
+  }
+
+  @media (max-width: 900px) {
+    h1 { font-size: 28px; }
+    .summary { grid-template-columns: repeat(2, 1fr); }
+    .stat:nth-child(2) { border-right: 0; }
+    main { grid-template-columns: 1fr; }
+  }
+
+  @media print {
+    @page { size: 48in 36in landscape; margin: 0; }
+    body { background: var(--paper); }
+    .poster { width: 48in; min-height: 36in; }
+  }
+</style>
+</head>
+<body>
+<div class="poster">
+  <header>
+    <h1>Compressing Stockfish Knowledge for Lightweight Chess Models</h1>
+    <div class="subtitle">Legal-move-aware distillation, architecture comparison, INT8 quantization, and magnitude pruning</div>
+  </header>
+
+  <div class="summary">
+    <div class="stat"><strong>74,731</strong><span>Stockfish-labeled positions</span></div>
+    <div class="stat"><strong>2,234</strong><span>games in grouped train/val/test splits</span></div>
+    <div class="stat"><strong>21.3%</strong><span>best base-model top-1 agreement</span></div>
+    <div class="stat"><strong>51%</strong><span>INT8 size reduction for SCNN-32x5</span></div>
+  </div>
+
+  <main>
+    <div class="column">
+      <section>
+        <h2>Research Question</h2>
+        <p class="question">How much Stockfish move and value knowledge can compact CNN students preserve, and what accuracy-efficiency tradeoffs result from quantization and pruning?</p>
+      </section>
+
+      <section class="teal">
+        <h2>Dataset and Teacher</h2>
+        <ul>
+          <li>Lichess standard rated games, May 2026, streamed directly from <code>.pgn.zst</code>.</li>
+          <li>Stockfish 18 teacher at depth 10 with MultiPV 5.</li>
+          <li>Policy targets are soft distributions over teacher candidate moves from the side-to-move perspective.</li>
+          <li>Value targets use White perspective: <code>tanh(eval_cp / 1000)</code>.</li>
+          <li>Final test set: 7,475 positions from 220 games never seen in training or validation.</li>
+        </ul>
+      </section>
+
+      <section class="orange">
+        <h2>Corrected Experimental Design</h2>
+        <div class="flow">
+          <div>1. Stream games and sample every second ply</div>
+          <div>2. Label each position with Stockfish MultiPV</div>
+          <div>3. Split by game, not by position, to prevent leakage</div>
+          <div>4. Mask illegal moves before policy loss and ranking</div>
+          <div>5. Train 10 students for 10 epochs; select by validation loss</div>
+          <div>6. Evaluate once on the held-out test split</div>
+        </div>
+        <h3>Training objective</h3>
+        <p><strong>Loss = policy soft cross-entropy + value MSE</strong></p>
+      </section>
+
+      <section>
+        <h2>Student Architectures</h2>
+        <p>Two families were tested at five channel/depth settings each:</p>
+        <ul>
+          <li><strong>Small CNN:</strong> standard convolutional blocks.</li>
+          <li><strong>Depthwise CNN:</strong> depthwise-separable blocks intended to reduce parameter count.</li>
+          <li>Configurations: 16x3, 32x3, 64x3, 32x5, and 64x5.</li>
+        </ul>
+      </section>
+    </div>
+
+    <div class="column">
+      <section>
+        <h2>Architecture Accuracy vs Latency</h2>
+        <figure>
+          <img src="../figures/overnight/final_v2/pareto_top1_vs_latency.png" alt="Top-1 accuracy versus CPU latency for ten student models">
+          <figcaption>Standard small CNNs dominate the tested depthwise variants. SCNN-32x5 gives the best base top-1 agreement; SCNN-32x3 provides the strongest value RMSE.</figcaption>
+        </figure>
+      </section>
+
+      <section class="teal">
+        <h2>Held-Out Results</h2>
+        <table>
+          <thead>
+            <tr><th>Model</th><th>Top-1</th><th>Top-3</th><th>Value RMSE</th><th>Latency</th></tr>
+          </thead>
+          <tbody>
+            <tr class="best"><td>SCNN-32x5</td><td>21.32%</td><td>41.10%</td><td>0.240</td><td>1.70 ms</td></tr>
+            <tr><td>SCNN-64x5</td><td>20.62%</td><td>42.66%</td><td>0.239</td><td>2.01 ms</td></tr>
+            <tr><td>SCNN-64x3</td><td>20.40%</td><td>40.78%</td><td>0.231</td><td>1.21 ms</td></tr>
+            <tr><td>SCNN-32x3</td><td>20.23%</td><td>38.97%</td><td>0.227</td><td>1.18 ms</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="orange">
+        <h2>Compression Accuracy vs Size</h2>
+        <figure>
+          <img src="../figures/overnight/compression_v2_fair/compression_top1_vs_model_mb.png" alt="Compression top-1 accuracy versus checkpoint size">
+          <figcaption>Dynamic INT8 quantization preserves the original top-1 result while reducing checkpoint size. Unstructured pruning leaves dense checkpoint size nearly unchanged.</figcaption>
+        </figure>
+      </section>
+    </div>
+
+    <div class="column">
+      <section class="red">
+        <h2>Fair Pruning Comparison</h2>
+        <figure>
+          <img src="../figures/overnight/compression_v2_fair/pruning_top1_vs_sparsity.png" alt="Pruning top-1 accuracy after equal fine-tuning">
+          <figcaption>The zero-sparsity point is an unpruned model given the same two fine-tuning epochs. This control prevents extra training from being mistaken for a pruning benefit.</figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2>Key Findings</h2>
+        <div class="finding">
+          <strong>1</strong>
+          <p><strong>Small CNNs won.</strong> Every tested depthwise student was below 19.4% top-1, while four standard CNNs exceeded 20%.</p>
+        </div>
+        <div class="finding">
+          <strong>2</strong>
+          <p><strong>INT8 is compact, not faster here.</strong> Accuracy was unchanged and size fell from 0.72 to 0.35 MB for SCNN-32x5, but measured CPU latency increased.</p>
+        </div>
+        <div class="finding">
+          <strong>3</strong>
+          <p><strong>Moderate pruning is resilient.</strong> SCNN-64x5 retained its fine-tuned accuracy through 50% sparsity; both models declined sharply at 75%.</p>
+        </div>
+        <div class="finding">
+          <strong>4</strong>
+          <p><strong>Fine-tuning is a major confound.</strong> The SCNN-64x5 control improved from 20.6% to 23.7% without pruning.</p>
+        </div>
+      </section>
+
+      <section class="orange">
+        <h2>What Compression Actually Bought</h2>
+        <table>
+          <thead>
+            <tr><th>SCNN-32x5</th><th>Top-1</th><th>Size</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Original</td><td>21.32%</td><td>0.72 MB</td></tr>
+            <tr><td>INT8</td><td>21.32%</td><td>0.35 MB</td></tr>
+            <tr><td>Fine-tune control</td><td>22.57%</td><td>0.72 MB</td></tr>
+            <tr><td>50% pruned</td><td>21.73%</td><td>0.72 MB</td></tr>
+          </tbody>
+        </table>
+        <div class="callout">
+          <strong>Important:</strong> sparsity is not automatically storage compression. A sparse runtime or sparse serialization format is required to convert zero weights into smaller files or faster inference.
+        </div>
+      </section>
+
+      <section class="teal">
+        <h2>Conclusion and Next Steps</h2>
+        <p>For these small chess students, architecture choice mattered more than naive compression. Dynamic quantization offers a clean storage win; moderate pruning preserves accuracy but needs sparse execution support to deliver deployment gains.</p>
+        <ul>
+          <li>Repeat top configurations across random seeds.</li>
+          <li>Use quantization-aware training and static convolution quantization.</li>
+          <li>Benchmark sparse kernels and structured channel pruning.</li>
+          <li>Evaluate playing strength through fixed-budget engine matches.</li>
+        </ul>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <span>DLEngine experiment v2, completed June 6, 2026</span>
+    <span>Full metrics, checkpoints, plots, commands, and W&amp;B links are documented in <code>docs/experiment_v2_handoff.md</code>.</span>
+  </footer>
+</div>
+</body>
+</html>

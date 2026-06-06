@@ -114,10 +114,12 @@ def run_pipeline(
     device: str,
     models: list[tuple[str, int, int]],
     wandb: bool,
+    grouped_split: bool,
     log_path: Path,
 ) -> Path:
     run_root = DATA_ROOT / name
     fens = run_root / "fens.txt"
+    game_ids = run_root / "game_ids.txt"
     labels = run_root / "stockfish_labels.jsonl"
     splits = run_root / "splits"
     metrics = OUTPUT_ROOT / f"{name}_metrics.csv"
@@ -150,6 +152,8 @@ def run_pipeline(
                 str(dataset),
                 "--out",
                 str(fens),
+                "--game-ids-out",
+                str(game_ids),
                 "--metadata-out",
                 str(run_root / "fens.metadata.json"),
                 "--max-games",
@@ -172,6 +176,8 @@ def run_pipeline(
                 "scripts/label_with_stockfish.py",
                 "--fens",
                 str(fens),
+                "--game-ids",
+                str(game_ids),
                 "--out",
                 str(labels),
                 "--metadata-out",
@@ -191,8 +197,7 @@ def run_pipeline(
         log(f"Skipping labeling for {name}; found {existing_labels} labels")
 
     if count_rows(splits / "train.jsonl") == 0:
-        run(
-            [
+        split_command = [
                 PYTHON,
                 "scripts/split_labels.py",
                 "--labels",
@@ -205,9 +210,10 @@ def run_pipeline(
                 "0.1",
                 "--seed",
                 "7",
-            ],
-            log_path,
-        )
+            ]
+        if grouped_split:
+            split_command.extend(["--group-key", "game_id"])
+        run(split_command, log_path)
 
     for model_name, channels, depth in models:
         label = f"{model_name}_{channels}x{depth}_d{stockfish_depth}_{label_limit // 1000}k_{name}"
@@ -292,6 +298,8 @@ def main() -> None:
     parser.add_argument("--skip-final", action="store_true")
     parser.add_argument("--skip-compression", action="store_true")
     parser.add_argument("--no-wandb", action="store_true")
+    parser.add_argument("--run-suffix", default="")
+    parser.add_argument("--grouped-split", action="store_true")
     args = parser.parse_args()
 
     dataset = select_dataset(args.dataset_zst, args.dataset_pgn)
@@ -319,13 +327,15 @@ def main() -> None:
             device=args.device,
             models=[("small_cnn", 16, 3)],
             wandb=not args.no_wandb,
+            grouped_split=args.grouped_split,
             log_path=log_path,
         )
 
-    final_metrics = OUTPUT_ROOT / "final_metrics.csv"
+    final_name = f"final{args.run_suffix}"
+    final_metrics = OUTPUT_ROOT / f"{final_name}_metrics.csv"
     if not args.skip_final:
         final_metrics = run_pipeline(
-            name="final",
+            name=final_name,
             dataset=dataset,
             stockfish=args.stockfish_path,
             max_games=4000,
@@ -339,6 +349,7 @@ def main() -> None:
             device=args.device,
             models=MODEL_SWEEP,
             wandb=not args.no_wandb,
+            grouped_split=args.grouped_split,
             log_path=log_path,
         )
 
@@ -346,19 +357,20 @@ def main() -> None:
         checkpoints = best_checkpoints(final_metrics, top_n=2)
         if not checkpoints:
             raise RuntimeError(f"No best checkpoints found from {final_metrics}")
+        compression_name = f"compression{args.run_suffix}"
         command = [
             PYTHON,
             "scripts/compress_students.py",
             "--checkpoints",
             *[str(path) for path in checkpoints],
             "--train-labels",
-            str(DATA_ROOT / "final" / "splits" / "train.jsonl"),
+            str(DATA_ROOT / final_name / "splits" / "train.jsonl"),
             "--test-labels",
-            str(DATA_ROOT / "final" / "splits" / "test.jsonl"),
+            str(DATA_ROOT / final_name / "splits" / "test.jsonl"),
             "--out-dir",
-            str(CHECKPOINT_ROOT / "compression"),
+            str(CHECKPOINT_ROOT / compression_name),
             "--metrics-out",
-            str(OUTPUT_ROOT / "compression_metrics.csv"),
+            str(OUTPUT_ROOT / f"{compression_name}_metrics.csv"),
             "--batch-size",
             str(args.batch_size),
             "--device",
@@ -376,9 +388,9 @@ def main() -> None:
                 "--final-metrics",
                 str(final_metrics),
                 "--compression-metrics",
-                str(OUTPUT_ROOT / "compression_metrics.csv"),
+                str(OUTPUT_ROOT / f"{compression_name}_metrics.csv"),
                 "--out-dir",
-                str(FIGURE_ROOT / "compression"),
+                str(FIGURE_ROOT / compression_name),
             ],
             log_path,
         )
