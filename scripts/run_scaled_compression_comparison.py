@@ -329,7 +329,7 @@ def poster_assets(aggregate: pd.DataFrame, poster_dir: Path) -> dict[str, str]:
     labels = [label_for(value) for value in selected["condition"]]
     colors = ["#4c78a8", "#f58518", "#72b7b2", "#54a24b", "#b279a2"]
     y = np.arange(len(selected))
-    fig, axes = plt.subplots(1, 3, figsize=(12, 4.6), sharey=True)
+    fig, axes = plt.subplots(1, 3, figsize=(9, 5.2), sharey=True)
     panels = (
         ("top1_mean", "top1_ci95", "Top-1 agreement", lambda value: f"{100 * value:.1f}%"),
         ("actual_model_mb_mean", None, "Serialized size (MB)", lambda value: f"{value:.1f}"),
@@ -338,7 +338,8 @@ def poster_assets(aggregate: pd.DataFrame, poster_dir: Path) -> dict[str, str]:
     for axis, (column, error_column, title, formatter) in zip(axes, panels):
         errors = selected[error_column] if error_column else None
         axis.barh(y, selected[column], xerr=errors, color=colors, alpha=0.9, capsize=3)
-        axis.set_title(title)
+        axis.set_title(title, fontsize=10)
+        axis.tick_params(axis="both", labelsize=8)
         axis.grid(True, axis="x", alpha=0.25)
         maximum = float(selected[column].max())
         for index, value in enumerate(selected[column]):
@@ -347,12 +348,12 @@ def poster_assets(aggregate: pd.DataFrame, poster_dir: Path) -> dict[str, str]:
                 index,
                 formatter(float(value)),
                 va="center",
-                fontsize=9,
+                fontsize=8,
             )
         axis.set_xlim(0, maximum * 1.22)
     axes[0].set_yticks(y, labels)
     axes[0].invert_yaxis()
-    fig.suptitle("Compression methods: accuracy, storage, and speed", fontsize=16)
+    fig.suptitle("Compression methods: accuracy, storage, and speed", fontsize=13)
     fig.tight_layout()
     save_figure(fig, poster_dir / "poster_1_compression_method_comparison")
 
@@ -367,7 +368,7 @@ def poster_assets(aggregate: pd.DataFrame, poster_dir: Path) -> dict[str, str]:
         "combined": "#b279a2",
         "control": "#9d9da1",
     }
-    fig, ax = plt.subplots(figsize=(8.4, 5.4))
+    fig, ax = plt.subplots(figsize=(6.5, 5.4))
     for method, group in plot.groupby("method"):
         xerr = np.vstack(
             [
@@ -419,9 +420,10 @@ def poster_assets(aggregate: pd.DataFrame, poster_dir: Path) -> dict[str, str]:
                 textcoords="offset points",
                 fontsize=8,
             )
-    ax.set_xlabel("Median CPU latency (ms / position, one thread)")
-    ax.set_ylabel("Mean top-1 Stockfish move agreement")
-    ax.set_title("Accuracy vs practical CPU inference cost")
+    ax.set_xlabel("Median CPU latency (ms / position, one thread)", fontsize=9)
+    ax.set_ylabel("Mean top-1 Stockfish move agreement", fontsize=9)
+    ax.set_title("Accuracy vs practical CPU inference cost", fontsize=12)
+    ax.tick_params(axis="both", labelsize=8)
     ax.grid(True, alpha=0.25)
     ax.legend(fontsize=7, ncol=2)
     fig.tight_layout()
