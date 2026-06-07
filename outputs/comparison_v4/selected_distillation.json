@@ -1,0 +1,6 @@
+{
+  "alpha": 0.5,
+  "temperature": 2.0,
+  "selection_metric": "mean validation Stockfish policy cross-entropy",
+  "test_metrics_used": false
+}

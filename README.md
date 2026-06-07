@@ -56,6 +56,11 @@ specified in [docs/compression_comparison_plan.md](docs/compression_comparison_p
 metrics, W&B links, poster assets, interpretation, and resume instructions in
 [docs/compression_comparison_handoff.md](docs/compression_comparison_handoff.md).
 
+The final scaled eight-seed comparison, including validation-selected distillation settings,
+confidence intervals, repeated latency measurements, and the revised three poster assets, is
+documented in
+[docs/compression_comparison_v4_handoff.md](docs/compression_comparison_v4_handoff.md).
+
 ## Midpoint Deliverables
 
 - Draft poster with complete structure and placeholders for results.

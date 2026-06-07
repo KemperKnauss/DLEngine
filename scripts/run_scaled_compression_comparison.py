@@ -232,7 +232,10 @@ def aggregate_metrics(rows: pd.DataFrame) -> pd.DataFrame:
             "params": float(group["params"].mean()),
             "prunable_params": float(group["prunable_params"].mean()),
             "nonzero_prunable_params": float(group["nonzero_prunable_params"].mean()),
-            "sparsity_target": group.iloc[0]["sparsity_target"],
+            "sparsity_target": pd.to_numeric(
+                group["sparsity_target"],
+                errors="coerce",
+            ).mean(),
             "cpu_latency_ms": float(group["cpu_latency_ms"].median()),
             "cpu_latency_q1_ms": float(group["cpu_latency_ms"].quantile(0.25)),
             "cpu_latency_q3_ms": float(group["cpu_latency_ms"].quantile(0.75)),
@@ -399,12 +402,20 @@ def poster_assets(aggregate: pd.DataFrame, poster_dir: Path) -> dict[str, str]:
         best_combined,
         *frontier["condition"].tolist(),
     }
+    annotation_offsets = {
+        "teacher_fp32": (10, 6),
+        "teacher_int8": (14, 34),
+        "student_direct": (14, -22),
+        "student_distilled": (14, 6),
+        "student_distilled_int8": (14, -2),
+        best_combined: (14, 21),
+    }
     for _, row in plot.iterrows():
         if row["condition"] in annotations:
             ax.annotate(
                 label_for(str(row["condition"])),
                 (row["cpu_latency_ms"], row["top1_mean"]),
-                xytext=(5, 5),
+                xytext=annotation_offsets.get(str(row["condition"]), (8, 6)),
                 textcoords="offset points",
                 fontsize=8,
             )
@@ -938,17 +949,89 @@ def log_summary_wandb(
         return ""
     import wandb
 
-    run.log(
-        {
-            "aggregate_metrics": wandb.Table(dataframe=aggregate),
-            "distillation_sweep": wandb.Table(dataframe=sweep),
-        }
+    aggregate_safe = aggregate.astype(object).where(pd.notna(aggregate), None)
+    sweep_safe = sweep.astype(object).where(pd.notna(sweep), None)
+    try:
+        run.log(
+            {
+                "aggregate_metrics": wandb.Table(dataframe=aggregate_safe),
+                "distillation_sweep": wandb.Table(dataframe=sweep_safe),
+            }
+        )
+        for path in sorted(poster_dir.glob("*.png")):
+            run.log({path.stem: wandb.Image(str(path))})
+        return run.url or ""
+    finally:
+        run.finish()
+
+
+def checkpoint_wandb_urls(checkpoint_root: Path) -> dict[str, str]:
+    urls: dict[str, str] = {}
+    for path in checkpoint_root.glob("seed_*/*.pt"):
+        try:
+            checkpoint = torch.load(path, map_location="cpu", weights_only=False)
+        except (AttributeError, RuntimeError, TypeError):
+            continue
+        if not isinstance(checkpoint, dict):
+            continue
+        metadata = checkpoint.get("metadata", {})
+        url = str(metadata.get("wandb_url", ""))
+        if url:
+            urls[str(path.relative_to(checkpoint_root).with_suffix(""))] = url
+    return urls
+
+
+def finalize_existing_run(
+    output_root: Path,
+    checkpoint_root: Path,
+    figure_root: Path,
+    wandb_enabled: bool,
+    elapsed_seconds: float | None,
+) -> None:
+    per_seed = pd.read_csv(output_root / "per_seed_metrics.csv")
+    sweep = pd.read_csv(output_root / "distillation_sweep.csv")
+    aggregate = aggregate_metrics(per_seed)
+    aggregate.to_csv(output_root / "aggregate_metrics.csv", index=False)
+    selected = json.loads(
+        (output_root / "selected_distillation.json").read_text(encoding="utf-8")
     )
-    for path in sorted(poster_dir.glob("*.png")):
-        run.log({path.stem: wandb.Image(str(path))})
-    url = run.url or ""
-    run.finish()
-    return url
+    poster_dir = figure_root / "poster"
+    diagnostic_dir = figure_root / "diagnostics"
+    selections = poster_assets(aggregate, poster_dir)
+    diagnostic_assets(per_seed, aggregate, sweep, diagnostic_dir)
+    summary_url = log_summary_wandb(
+        wandb_enabled,
+        aggregate,
+        sweep,
+        poster_dir,
+        float(selected["alpha"]),
+        float(selected["temperature"]),
+    )
+    wandb_urls = checkpoint_wandb_urls(checkpoint_root)
+    wandb_urls["comparison_v4_summary"] = summary_url
+    (output_root / "wandb_runs.json").write_text(
+        json.dumps(wandb_urls, indent=2),
+        encoding="utf-8",
+    )
+    completed_seeds = sorted(int(value) for value in per_seed["seed"].unique())
+    summary = {
+        "completed": True,
+        "elapsed_seconds": elapsed_seconds,
+        "completed_seeds": completed_seeds,
+        "conditions_per_seed": int(per_seed["condition"].nunique()),
+        "selected_alpha": float(selected["alpha"]),
+        "selected_temperature": float(selected["temperature"]),
+        **selections,
+        "per_seed_metrics": str(output_root / "per_seed_metrics.csv"),
+        "aggregate_metrics": str(output_root / "aggregate_metrics.csv"),
+        "poster_dir": str(poster_dir),
+        "diagnostic_dir": str(diagnostic_dir),
+    }
+    (output_root / "run_summary.json").write_text(
+        json.dumps(summary, indent=2),
+        encoding="utf-8",
+    )
+    log(f"Finalized existing run with {len(completed_seeds)} seeds.")
 
 
 def main() -> None:
@@ -973,6 +1056,8 @@ def main() -> None:
     parser.add_argument("--minimum-seeds", type=int, default=5)
     parser.add_argument("--smoke", action="store_true")
     parser.add_argument("--no-wandb", action="store_true")
+    parser.add_argument("--finalize-only", action="store_true")
+    parser.add_argument("--elapsed-seconds", type=float)
     args = parser.parse_args()
 
     started = time.perf_counter()
@@ -1001,6 +1086,15 @@ def main() -> None:
     diagnostic_dir = figure_root / "diagnostics"
     for path in (output_root, checkpoint_root, poster_dir, diagnostic_dir):
         path.mkdir(parents=True, exist_ok=True)
+    if args.finalize_only:
+        finalize_existing_run(
+            output_root,
+            checkpoint_root,
+            figure_root,
+            not args.no_wandb,
+            args.elapsed_seconds,
+        )
+        return
 
     limits = {"train": 400, "val": 50, "test": 50} if args.smoke else {}
     log(f"Loading datasets for scaled experiment on {device}")

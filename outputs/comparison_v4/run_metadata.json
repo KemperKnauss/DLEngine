@@ -1,0 +1,54 @@
+{
+  "platform": "Linux-6.6.114.1-microsoft-standard-WSL2-x86_64-with-glibc2.43",
+  "python": "3.12.13",
+  "torch": "2.12.0+cu132",
+  "cuda_runtime": "13.2",
+  "gpu": "NVIDIA RTX A1000 6GB Laptop GPU",
+  "train_positions": 59760,
+  "val_positions": 7496,
+  "test_positions": 7475,
+  "split_overlaps": {
+    "train_val": 0,
+    "train_test": 0,
+    "val_test": 0
+  },
+  "seeds_requested": [
+    7,
+    17,
+    27,
+    37,
+    47,
+    57,
+    67,
+    77
+  ],
+  "alphas": [
+    0.25,
+    0.5,
+    0.75
+  ],
+  "temperatures": [
+    1.0,
+    2.0,
+    4.0
+  ],
+  "arguments": {
+    "split_root": "/mnt/c/Users/danie/Repositories/DLEngine/data/overnight/final_v2/splits",
+    "artifact_name": "comparison_v4",
+    "seeds": "7,17,27,37,47,57,67,77",
+    "alphas": "0.25,0.5,0.75",
+    "temperatures": "1.0,2.0,4.0",
+    "epochs": 20,
+    "patience": 4,
+    "batch_size": 256,
+    "learning_rate": 0.0003,
+    "prune_learning_rate": 0.0001,
+    "latency_repeats": 300,
+    "latency_trials": 7,
+    "cpu_threads": 1,
+    "max_runtime_minutes": 210,
+    "minimum_seeds": 5,
+    "smoke": false,
+    "no_wandb": false
+  }
+}

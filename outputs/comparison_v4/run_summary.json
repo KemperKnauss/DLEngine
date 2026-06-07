@@ -1,0 +1,23 @@
+{
+  "completed": true,
+  "elapsed_seconds": 9562.8,
+  "completed_seeds": [
+    7,
+    17,
+    27,
+    37,
+    47,
+    57,
+    67,
+    77
+  ],
+  "conditions_per_seed": 13,
+  "selected_alpha": 0.5,
+  "selected_temperature": 2.0,
+  "best_combined": "student_distilled_pruned_25",
+  "best_teacher_pruned": "teacher_pruned_75",
+  "per_seed_metrics": "/mnt/c/Users/danie/Repositories/DLEngine/outputs/comparison_v4/per_seed_metrics.csv",
+  "aggregate_metrics": "/mnt/c/Users/danie/Repositories/DLEngine/outputs/comparison_v4/aggregate_metrics.csv",
+  "poster_dir": "/mnt/c/Users/danie/Repositories/DLEngine/figures/comparison_v4/poster",
+  "diagnostic_dir": "/mnt/c/Users/danie/Repositories/DLEngine/figures/comparison_v4/diagnostics"
+}
