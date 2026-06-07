@@ -1,0 +1,15 @@
+{
+  "teacher_fp32": "https://wandb.ai/danielqian6-university-of-washington/dlengine-chess-compression/runs/hrlm7nkl",
+  "student_direct": "https://wandb.ai/danielqian6-university-of-washington/dlengine-chess-compression/runs/2j7fvb9y",
+  "student_distilled": "https://wandb.ai/danielqian6-university-of-washington/dlengine-chess-compression/runs/fhpfaigt",
+  "teacher_int8": "https://wandb.ai/danielqian6-university-of-washington/dlengine-chess-compression/runs/o8xdzg8q",
+  "teacher_control": "https://wandb.ai/danielqian6-university-of-washington/dlengine-chess-compression/runs/aap00u8f",
+  "teacher_pruned_25": "https://wandb.ai/danielqian6-university-of-washington/dlengine-chess-compression/runs/hy756s1c",
+  "teacher_pruned_50": "https://wandb.ai/danielqian6-university-of-washington/dlengine-chess-compression/runs/4ujvdga5",
+  "teacher_pruned_75": "https://wandb.ai/danielqian6-university-of-washington/dlengine-chess-compression/runs/mmrmtg9b",
+  "student_distilled_int8": "https://wandb.ai/danielqian6-university-of-washington/dlengine-chess-compression/runs/9voatr7y",
+  "student_distilled_control": "https://wandb.ai/danielqian6-university-of-washington/dlengine-chess-compression/runs/dza5lyvy",
+  "student_distilled_pruned_25": "https://wandb.ai/danielqian6-university-of-washington/dlengine-chess-compression/runs/krzfv0x6",
+  "student_distilled_pruned_50": "https://wandb.ai/danielqian6-university-of-washington/dlengine-chess-compression/runs/28w7a4k2",
+  "student_distilled_pruned_75": "https://wandb.ai/danielqian6-university-of-washington/dlengine-chess-compression/runs/gkcyvynw"
+}

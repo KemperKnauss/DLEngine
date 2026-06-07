@@ -51,6 +51,11 @@ The corrected 75k-label experiment, including legal-move masking, game-grouped s
 pruning controls, final plots, and the results poster, is documented in
 [docs/experiment_v2_handoff.md](docs/experiment_v2_handoff.md).
 
+The controlled comparison of distillation, dynamic INT8 quantization, and magnitude pruning is
+specified in [docs/compression_comparison_plan.md](docs/compression_comparison_plan.md), with final
+metrics, W&B links, poster assets, interpretation, and resume instructions in
+[docs/compression_comparison_handoff.md](docs/compression_comparison_handoff.md).
+
 ## Midpoint Deliverables
 
 - Draft poster with complete structure and placeholders for results.

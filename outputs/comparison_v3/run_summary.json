@@ -1,0 +1,8 @@
+{
+  "completed": true,
+  "elapsed_seconds": 241.99670642102137,
+  "conditions": 13,
+  "metrics": "/mnt/c/Users/danie/Repositories/DLEngine/outputs/comparison_v3/final_metrics.csv",
+  "poster_dir": "/mnt/c/Users/danie/Repositories/DLEngine/figures/comparison_v3/poster",
+  "diagnostic_dir": "/mnt/c/Users/danie/Repositories/DLEngine/figures/comparison_v3/diagnostics"
+}
