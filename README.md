@@ -60,6 +60,9 @@ The final scaled eight-seed comparison, including validation-selected distillati
 confidence intervals, repeated latency measurements, and the revised three poster assets, is
 documented in
 [docs/compression_comparison_v4_handoff.md](docs/compression_comparison_v4_handoff.md).
+The complete experimental procedure, including the exact CPU latency and serialized-size
+calculations, is documented in
+[docs/comparison_v4_experimental_methodology.md](docs/comparison_v4_experimental_methodology.md).
 
 ## Midpoint Deliverables
 
