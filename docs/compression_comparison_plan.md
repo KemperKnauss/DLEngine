@@ -46,7 +46,8 @@ Evaluate these conditions on the same held-out test split:
 6. Distilled FP32 student.
 7. Dynamically INT8-quantized distilled student.
 8. Unpruned distilled-student fine-tuning control.
-9. Distilled student globally pruned to 50% sparsity with one fine-tuning epoch.
+9. Distilled student globally pruned to 25%, 50%, and 75% sparsity, each with one fine-tuning
+   epoch.
 
 Teacher and direct-student loss:
 
