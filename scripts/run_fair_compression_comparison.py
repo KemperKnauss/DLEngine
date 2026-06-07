@@ -106,6 +106,7 @@ def init_wandb(
     run_name: str,
     job_type: str,
     config: dict[str, Any],
+    group: str = "comparison_v3",
 ):
     if not enabled:
         return None
@@ -113,7 +114,7 @@ def init_wandb(
 
     return wandb.init(
         project="dlengine-chess-compression",
-        group="comparison_v3",
+        group=group,
         name=run_name,
         job_type=job_type,
         config=config,
@@ -211,6 +212,7 @@ def train_model(
     wandb_enabled: bool,
     distill_alpha: float = 0.7,
     distill_temperature: float = 2.0,
+    wandb_group: str = "comparison_v3",
 ) -> TrainResult:
     torch.manual_seed(seed)
     model = model.to(device)
@@ -237,7 +239,13 @@ def train_model(
         "train_positions": len(train_data),
         "val_positions": len(val_data),
     }
-    wandb_run = init_wandb(wandb_enabled, run_name, "train", config)
+    wandb_run = init_wandb(
+        wandb_enabled,
+        run_name,
+        "train",
+        config,
+        group=wandb_group,
+    )
     started = time.perf_counter()
     history: list[dict[str, float | int]] = []
     best_state = deepcopy(model.state_dict())
@@ -328,6 +336,8 @@ def fine_tune_one_epoch(
     seed: int,
     objective: str,
     teacher: nn.Module | None,
+    distill_alpha: float = 0.7,
+    distill_temperature: float = 2.0,
 ) -> float:
     loader = make_loader(train_data, batch_size, True, device, seed)
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=1.0e-4)
@@ -341,8 +351,8 @@ def fine_tune_one_epoch(
         scaler,
         objective,
         teacher,
-        0.7,
-        2.0,
+        distill_alpha,
+        distill_temperature,
     )
     log(f"fine_tune objective={objective} loss={metrics['loss']:.4f}")
     return time.perf_counter() - started
